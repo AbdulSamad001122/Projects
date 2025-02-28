@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
+import openpyxl
 
-# streamlit run e:/Projects/Csv_to_Excel/main.py
 
 if __name__ == "__main__":
     st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
@@ -54,10 +54,10 @@ if __name__ == "__main__":
                     new_name = file.name.replace(ext, "csv")
                 else:
                     df.to_excel(output, index=False, engine="openpyxl")
-                    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mine = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     new_name = file.name.replace(ext, "xlsx")
 
                 output.seek(0)
-                st.download_button(label=f"Download from here!", data=output, file_name=new_name, mime=mime)
+                st.download_button(label=f"Download from here!", data=output, file_name=new_name, mime=mine)
 
             st.success(f"{file.name} cleaned and converted to {format_choice}")
