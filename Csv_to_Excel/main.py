@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-import openpyxl
 
 
 if __name__ == "__main__":
