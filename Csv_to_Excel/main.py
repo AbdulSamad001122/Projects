@@ -2,6 +2,13 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
+# Inject Google Site Verification Meta Tag
+st.markdown(
+    '<meta name="google-site-verification" content="N8DDp67BXwAFyDfwcEz3c-_mtSatENB-4XKqf-5e0-o" />',
+    unsafe_allow_html=True
+)
+
+
 # Set page configuration
 st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
 
