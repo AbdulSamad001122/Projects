@@ -2,22 +2,34 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-# Set page configuration
-st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
 
-GA_TRACKING_ID = "G-R9S03BXQCP"  # Replace with your ID
 
-GA_SCRIPT = f"""
-<script async src="https://www.googletagmanager.com/gtag/js?id={GA_TRACKING_ID}"></script>
+import streamlit as st
+
+# Google Analytics tracking script
+GA_SCRIPT = """
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-R9S03BXQCP"></script>
 <script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){{dataLayer.push(arguments);}}
-gtag('js', new Date());
-gtag('config', '{GA_TRACKING_ID}');
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-R9S03BXQCP');
 </script>
 """
 
-st.components.v1.html(GA_SCRIPT, height=0)
+# Inject Google Analytics into the app
+st.markdown(GA_SCRIPT, unsafe_allow_html=True)
+
+# Set page configuration
+st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
+
+# Your existing Streamlit app code
+st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
+st.title("File Converter & Cleaner")
+st.write("This app converts CSV files to Excel and helps clean the data before downloading.")
+
+# Continue with the rest of your Streamlit code...
+
 
 
 st.title("File Converter & Cleaner")
