@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-
+# Set page configuration
+st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
 
 import streamlit as st
 
@@ -20,8 +21,7 @@ GA_SCRIPT = """
 # Inject Google Analytics into the app
 st.markdown(GA_SCRIPT, unsafe_allow_html=True)
 
-# Set page configuration
-st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
+
 
 # Your existing Streamlit app code
 st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
