@@ -5,7 +5,7 @@ from io import BytesIO
 # Set page configuration
 st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
 
-import streamlit as st
+st.markdown("[Click here](https://roubauteezavoak.net/4/9029776) to support us!", unsafe_allow_html=True)
 
 
 st.title("File Converter & Cleaner")
