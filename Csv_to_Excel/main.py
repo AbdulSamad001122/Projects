@@ -21,10 +21,6 @@ GA_SCRIPT = """
 # Inject Google Analytics into the app
 st.markdown(GA_SCRIPT, unsafe_allow_html=True)
 
-
-
-# Your existing Streamlit app code
-st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="wide")
 st.title("File Converter & Cleaner")
 st.write("This app converts CSV files to Excel and helps clean the data before downloading.")
 
