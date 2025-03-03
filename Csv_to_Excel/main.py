@@ -7,29 +7,10 @@ st.set_page_config(page_title="CSV to Excel", page_icon=":bar_chart:", layout="w
 
 import streamlit as st
 
-# Google Analytics tracking script
-GA_SCRIPT = """
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-R9S03BXQCP"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-R9S03BXQCP');
-</script>
-"""
-
-# Inject Google Analytics into the app
-st.markdown(GA_SCRIPT, unsafe_allow_html=True)
 
 st.title("File Converter & Cleaner")
 st.write("This app converts CSV files to Excel and helps clean the data before downloading.")
 
-# Continue with the rest of your Streamlit code...
-
-
-
-st.title("File Converter & Cleaner")
-st.write("This app converts CSV files to Excel and helps clean the data before downloading.")
 
 # File uploader
 files = st.file_uploader("Upload your CSV or Excel files", type=['csv', "xlsx"], accept_multiple_files=True)
