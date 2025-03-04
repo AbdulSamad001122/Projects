@@ -1,3 +1,6 @@
-streamlit
+flask
+flask-cors
 pandas
 openpyxl
+numpy
+werkzeug

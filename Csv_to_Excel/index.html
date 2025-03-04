@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to XLSX Converter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fas fa-file-excel"></i>
+            <span>CSV2XLSX</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="features.html"><i class="fas fa-star"></i> Features</a></li>
+            <li><a href="about.html"><i class="fas fa-info-circle"></i> About</a></li>
+            <li><a href="contact.html"><i class="fas fa-envelope"></i> Contact</a></li>
+        </ul>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="main-hero">
+        <div class="hero-content animate-fade-in">
+            <h1 class="hero-title">Transform Your Data</h1>
+            <p class="hero-subtitle">Convert CSV to XLSX with Powerful Features</p>
+            <div class="hero-stats">
+                <div class="stat-box animate-slide-up">
+                    <i class="fas fa-file-excel"></i>
+                    <span class="stat-number">10K+</span>
+                    <span class="stat-text">Files Converted</span>
+                </div>
+                <div class="stat-box animate-slide-up" style="animation-delay: 0.2s;">
+                    <i class="fas fa-users"></i>
+                    <span class="stat-number">5K+</span>
+                    <span class="stat-text">Happy Users</span>
+                </div>
+                <div class="stat-box animate-slide-up" style="animation-delay: 0.4s;">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="stat-number">99%</span>
+                    <span class="stat-text">Success Rate</span>
+                </div>
+            </div>
+            <div class="hero-buttons">
+                <a href="#converter" class="btn primary-btn animate-slide-up">Start Converting</a>
+                <a href="features.html" class="btn secondary-btn animate-slide-up">Explore Features</a>
+            </div>
+        </div>
+        <div class="hero-image animate-fade-in">
+            <div class="floating-files">
+                <i class="fas fa-file-csv file-icon csv"></i>
+                <i class="fas fa-arrow-right arrow-icon"></i>
+                <i class="fas fa-file-excel file-icon excel"></i>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Overview -->
+    <section class="features-overview">
+        <h2 class="section-title animate-fade-in">Why Choose Our Converter?</h2>
+        <div class="features-grid">
+            <div class="feature-box animate-slide-up">
+                <div class="feature-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h3>Lightning Fast</h3>
+                <p>Convert your files instantly with our optimized engine</p>
+            </div>
+            <div class="feature-box animate-slide-up" style="animation-delay: 0.2s;">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Secure & Private</h3>
+                <p>Your data security is our top priority</p>
+            </div>
+            <div class="feature-box animate-slide-up" style="animation-delay: 0.4s;">
+                <div class="feature-icon">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <h3>Easy to Use</h3>
+                <p>Simple interface for quick conversions</p>
+            </div>
+            <div class="feature-box animate-slide-up" style="animation-delay: 0.6s;">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Data Analysis</h3>
+                <p>Built-in tools for basic data analysis</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <h2 class="section-title animate-fade-in">How It Works</h2>
+        <div class="steps-container">
+            <div class="step animate-slide-right">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Upload Your File</h3>
+                    <p>Select your CSV file(s) to begin</p>
+                </div>
+            </div>
+            <div class="step animate-slide-right" style="animation-delay: 0.2s;">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Clean & Preview</h3>
+                    <p>Review and clean your data</p>
+                </div>
+            </div>
+            <div class="step animate-slide-right" style="animation-delay: 0.4s;">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Convert & Download</h3>
+                    <p>Get your XLSX file instantly</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Converter Section -->
+    <section id="converter" class="converter-section">
+        <h2 class="section-title animate-fade-in">Start Converting</h2>
+        <div class="converter-container animate-slide-up">
+            <div class="iframe-container">
+                <iframe src="https://csv-to-xlsx-converter.streamlit.app/?embed=true" allowfullscreen></iframe>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="cta-section">
+        <div class="cta-content animate-fade-in">
+            <h2>Ready to Transform Your Data?</h2>
+            <p>Join thousands of satisfied users who trust our converter</p>
+            <div class="cta-buttons">
+                <a href="#converter" class="btn primary-btn">Start Converting Now</a>
+                <a href="contact.html" class="btn secondary-btn">Get Support</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="features.html">Features</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Connect With Us</h3>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 CSV2XLSX Converter. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
