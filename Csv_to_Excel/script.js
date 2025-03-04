@@ -41,3 +41,19 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(el);
     });
 });
+
+// Add this to your existing script.js
+document.addEventListener('DOMContentLoaded', function () {
+    // Existing hamburger menu code...
+
+    // Dropdown menu for mobile
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function (e) {
+            e.preventDefault();
+            const dropdown = this.parentElement;
+            dropdown.classList.toggle('active');
+        });
+    });
+});
