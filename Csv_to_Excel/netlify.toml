@@ -1,16 +1,24 @@
 [[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-
-[[headers]]
   for = "/sitemap.xml"
   [headers.values]
     Content-Type = "application/xml"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/sitemap.xsl"
+  [headers.values]
+    Content-Type = "text/xsl"
+    Access-Control-Allow-Origin = "*"
 
 [[headers]]
   for = "/robots.txt"
   [headers.values]
     Content-Type = "text/plain"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    Cache-Control = "public, max-age=3600"
