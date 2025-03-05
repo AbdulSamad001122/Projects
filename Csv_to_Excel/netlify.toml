@@ -6,6 +6,12 @@
     X-Content-Type-Options = "nosniff"
 
 [[headers]]
+  for = "/sitemap.xsl"
+  [headers.values]
+    Content-Type = "text/xsl"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
   for = "/robots.txt"
   [headers.values]
     Content-Type = "text/plain"
@@ -18,6 +24,13 @@
   status = 200
   force = true
   headers = { Content-Type = "application/xml" }
+
+[[redirects]]
+  from = "/sitemap.xsl"
+  to = "/sitemap.xsl"
+  status = 200
+  force = true
+  headers = { Content-Type = "text/xsl" }
 
 [[redirects]]
   from = "/robots.txt"
