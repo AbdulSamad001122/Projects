@@ -2,22 +2,31 @@
   for = "/sitemap.xml"
   [headers.values]
     Content-Type = "application/xml"
-    X-Robots-Tag = "noindex"
+    Access-Control-Allow-Origin = "*"
+    X-Content-Type-Options = "nosniff"
 
 [[headers]]
   for = "/robots.txt"
   [headers.values]
     Content-Type = "text/plain"
-    X-Robots-Tag = "noindex"
+    Access-Control-Allow-Origin = "*"
+    X-Content-Type-Options = "nosniff"
 
 [[redirects]]
   from = "/sitemap.xml"
   to = "/sitemap.xml"
   status = 200
   force = true
+  headers = { Content-Type = "application/xml" }
 
 [[redirects]]
   from = "/robots.txt"
   to = "/robots.txt"
   status = 200
   force = true
+  headers = { Content-Type = "text/plain" }
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
