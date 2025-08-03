@@ -6,41 +6,41 @@ import Navbar from "@/components/Navbar";
 import WrapButton from "@/components/ui/wrap-button";
 import { Globe } from "lucide-react";
 
-
 const allowedResolutions = [
-  [720, 1280],     // HD (older/small phones)
-  [750, 1334],     // iPhone SE, 6, 7, 8
-  [828, 1792],     // iPhone XR
-  [1080, 1920],    // Full HD (standard)
-  [1080, 2160],    // 18:9 Androids
-  [1080, 2340],    // 19.5:9 Androids
+  [720, 1280], // HD (older/small phones)
+  [750, 1334], // iPhone SE, 6, 7, 8
+  [555, 1200], // iPhone SE, 6, 7, 8
+  
+  [828, 1792], // iPhone XR
+  [1080, 1920], // Full HD (standard)
+  [1080, 2160], // 18:9 Androids
+  [1080, 2340], // 19.5:9 Androids
   [1080, 2400],
   [1080, 2640],
-  [1170, 2532],    // iPhone 12–15
-  [1290, 2796],    // iPhone 15 Pro Max
+  [1170, 2532], // iPhone 12–15
+  [1290, 2796], // iPhone 15 Pro Max
 
-  [1536, 2048],    // iPad Mini/Air
-  [1668, 2388],    // iPad Pro 11"
-  [2048, 2732],    // iPad Pro 12.9"
-  [2560, 1600],    // Android tablets, MacBooks
+  [1536, 2048], // iPad Mini/Air
+  [1668, 2388], // iPad Pro 11"
+  [2048, 2732], // iPad Pro 12.9"
+  [2560, 1600], // Android tablets, MacBooks
 
-  [1366, 768],     // Common laptop HD
-  [1600, 900],     // HD+
-  [1920, 1080],    // FHD
+  [1366, 768], // Common laptop HD
+  [1600, 900], // HD+
+  [1920, 1080], // FHD
   [2048, 1152],
-  [2560, 1440],    // QHD
+  [2560, 1440], // QHD
 
-  [2560, 1080],    // Ultrawide (21:9)
-  [3440, 1440],    // Ultrawide QHD
-  [3840, 1600],    // Ultrawide 4K+
+  [2560, 1080], // Ultrawide (21:9)
+  [3440, 1440], // Ultrawide QHD
+  [3840, 1600], // Ultrawide 4K+
 
-  [3840, 2160],    // 4K UHD
-  [3840, 2400],    // 4K+
-  [5120, 2160],    // 5K Ultrawide
-  [5120, 2880],    // 5K iMac
-  [7680, 4320],    // 8K UHD
+  [3840, 2160], // 4K UHD
+  [3840, 2400], // 4K+
+  [5120, 2160], // 5K Ultrawide
+  [5120, 2880], // 5K iMac
+  [7680, 4320], // 8K UHD
 ];
-
 
 export default function UploadForm() {
   const [title, setTitle] = useState("");
