@@ -1,15 +1,16 @@
 import { clerkClient } from "@clerk/clerk-sdk-node";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-// ✅ Use `context` instead of destructuring `params` directly
+// ✅ Correct way to access dynamic route params in App Router
 export async function GET(
-  req: Request,
+  req: NextRequest,
   context: { params: { id: string } }
 ) {
-  const { id } = context.params;
+  const userId = context.params.id;
 
   try {
-    const user = await clerkClient.users.getUser(id);
+    const user = await clerkClient.users.getUser(userId);
+
     return NextResponse.json({
       imageUrl: user.imageUrl,
     });
