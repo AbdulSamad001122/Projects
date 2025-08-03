@@ -1,16 +1,14 @@
 import { clerkClient } from "@clerk/clerk-sdk-node";
 import { NextRequest, NextResponse } from "next/server";
-import type { NextApiRequestContext } from "next"; // ✅ ✅ Correct type for context
 
 export async function GET(
   req: NextRequest,
-  context: NextApiRequestContext
+  { params }: { params: { id: string } }
 ) {
-  const userId = context.params.id;
+  const { id } = params;
 
   try {
-    const user = await clerkClient.users.getUser(userId);
-
+    const user = await clerkClient.users.getUser(id);
     return NextResponse.json({
       imageUrl: user.imageUrl,
     });
