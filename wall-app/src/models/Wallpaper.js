@@ -5,6 +5,8 @@ const wallpaperSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
+      trim: true,
+      lowercase: true,
     },
     image_detail: {
       public_id: {
@@ -28,8 +30,8 @@ const wallpaperSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,            // ✅ Correct spelling
-    collection: "wallpapers",    // ✅ Correct place to set collection name
+    timestamps: true, // ✅ Correct spelling
+    collection: "wallpapers", // ✅ Correct place to set collection name
   }
 );
 
