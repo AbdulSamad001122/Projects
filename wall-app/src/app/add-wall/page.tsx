@@ -3,6 +3,9 @@
 import React, { useState, FormEvent, ChangeEvent } from "react";
 import axios from "axios";
 import Navbar from "@/components/Navbar";
+import WrapButton from "@/components/ui/wrap-button";
+import { Globe } from "lucide-react";
+
 
 const allowedResolutions = [
   [720, 1280],
@@ -61,7 +64,9 @@ export default function UploadForm() {
 
       const response = await axios.post("/api/image-upload", formData);
 
-      setMessage(`✅ Uploaded successfully! Public ID: ${response.data.public_id}`);
+      setMessage(
+        `✅ Uploaded successfully! Public ID: ${response.data.public_id}`
+      );
       setTitle("");
       setFile(null);
     } catch (error: any) {
@@ -73,7 +78,9 @@ export default function UploadForm() {
       let detailedMessage = `❌ Upload failed: ${errorMsg}`;
 
       if (received && allowedList) {
-        detailedMessage += `\nReceived: ${received}\nAllowed: ${allowedList.join(", ")}`;
+        detailedMessage += `\nReceived: ${received}\nAllowed: ${allowedList.join(
+          ", "
+        )}`;
       }
 
       setMessage(detailedMessage);
@@ -87,8 +94,14 @@ export default function UploadForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-black">
       <Navbar />
+      <WrapButton className="mt-10" href="/show-wall">
+        <Globe className="animate-spin " />
+        See Wallpapers
+      </WrapButton>
       <div className="max-w-lg mx-auto mt-8 p-6 bg-white/10 backdrop-blur-md rounded-xl shadow-lg text-white">
-        <h2 className="text-2xl font-bold mb-6 text-center">📤 Upload Wallpaper</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          📤 Upload Wallpaper
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -130,7 +143,9 @@ export default function UploadForm() {
         )}
 
         <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">📏 Accepted Resolutions</h3>
+          <h3 className="text-lg font-semibold mb-2">
+            📏 Accepted Resolutions
+          </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm border-collapse border border-white/10">
               <thead>

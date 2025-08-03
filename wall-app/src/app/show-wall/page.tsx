@@ -94,7 +94,7 @@ const AllWallpapersPage = () => {
         <ThemeToggleButton />
         <WrapButton className="mt-10" href="/add-wall">
           <Globe className="animate-spin " />
-          Get started
+          Add Wallpaper
         </WrapButton>
 
         <div className="w-full max-w-6xl mx-auto pt-20 px-4">
