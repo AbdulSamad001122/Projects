@@ -1,10 +1,10 @@
 import { clerkClient } from "@clerk/clerk-sdk-node";
 import { NextRequest, NextResponse } from "next/server";
+import type { NextApiRequestContext } from "next"; // ✅ ✅ Correct type for context
 
-// ✅ Correct way to access dynamic route params in App Router
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: NextApiRequestContext
 ) {
   const userId = context.params.id;
 
