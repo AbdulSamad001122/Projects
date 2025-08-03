@@ -8,9 +8,10 @@ import { Globe } from "lucide-react";
 
 const allowedResolutions = [
   [720, 1280], // HD (older/small phones)
+  [720, 1560], // HD (older/small phones)
   [750, 1334], // iPhone SE, 6, 7, 8
   [555, 1200], // iPhone SE, 6, 7, 8
-  
+
   [828, 1792], // iPhone XR
   [1080, 1920], // Full HD (standard)
   [1080, 2160], // 18:9 Androids
