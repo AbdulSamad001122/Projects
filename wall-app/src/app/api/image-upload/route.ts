@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       [3456, 5184],
       [2432, 3648],
       [1842, 4096],
+      [736, 1595],
     ];
 
     console.log("Image dimensions received:", width, height);
