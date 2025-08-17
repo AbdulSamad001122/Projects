@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// The `User` model represents a person who can have an account in your app.
+model User {
+  id String @id @default(cuid()) // Unique ID for the user (Primary Key).
+  // `String` means the ID will be stored as text.
+  // `@id` marks this as the primary key.
+  // `@default(cuid())` means Prisma will auto-generate
+  // a globally unique ID using the cuid() function when a new user is created.
+
+  clerkId String @unique // The ID from Clerk authentication service.
+  // `@unique` ensures no two users can have the same Clerk ID.
+
+  docs Doc[] // A list (array) of "Doc" records related to this user.
+  // This is a one-to-many relationship:
+  // One user → many docs.
+  // Prisma automatically connects this with the `user` field in the `Doc` model.
+
+  createdAt DateTime @default(now()) // The date & time the user was created.
+  // `@default(now())` means it will be filled automatically with the current timestamp.
+
+  updatedAt DateTime @updatedAt // The date & time when the user was last updated.
+  // `@updatedAt` automatically updates the timestamp whenever the user record changes.
+}
+
+// The `Doc` model represents a document (text, HTML, JSON, Markdown, etc.) that belongs to a user.
+model Doc {
+  id String @id @default(cuid()) // Unique ID for the document (Primary Key).
+  // Auto-generated using cuid().
+
+  title String // Title of the document (text format).
+
+  content Json // The actual content of the document.
+  // Can store HTML, JSON, Markdown, or plain text.
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Relationship field linking this document to a user.
+  // `fields: [userId]` tells Prisma which field in `Doc` stores the foreign key.
+  // `references: [id]` means it points to the `id` field in the `User` model.
+  // `onDelete: Cascade` means:
+  // If a user is deleted, all their related docs will also be deleted automatically.
+
+  userId String // Foreign key that stores the ID of the related user.
+
+  createdAt DateTime @default(now()) // Timestamp when the document was created (auto-filled).
+
+  updatedAt DateTime @updatedAt // Timestamp when the document was last updated (auto-filled).
+}
