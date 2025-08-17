@@ -4,6 +4,12 @@ import debounce from "lodash.debounce"; // ✅ add this
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useCurrentEditor } from "@tiptap/react";
+import { MessageSquarePlusIcon } from "lucide-react";
+
+import {
+  useLiveblocksExtension,
+  FloatingToolbar,
+} from "@liveblocks/react-tiptap";
 
 import {
   NotionDetails,
@@ -88,6 +94,7 @@ import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
 import "@/components/tiptap-templates/simple/simple-editor.scss";
 
 import content from "@/components/tiptap-templates/simple/data/content.json";
+import { Threads } from "@/app/documents/[documentId]/threads";
 
 const MainToolbarContent = ({ onHighlighterClick, onLinkClick, isMobile }) => {
   const { editor } = useCurrentEditor();
@@ -150,6 +157,17 @@ const MainToolbarContent = ({ onHighlighterClick, onLinkClick, isMobile }) => {
           ──
         </Button>
       </ToolbarGroup>
+      {/* 🆕 Comment Button */}
+      <ToolbarGroup>
+        <Button
+          onClick={() => editor?.chain().focus().addPendingComment().run()}
+          disabled={!editor?.isEditable}
+          data-active={editor?.isActive("liveblocksCommentMark")}
+          className="bg-transparent hover:bg-gray-100"
+        >
+          <MessageSquarePlusIcon className="tiptap-button-icon" />
+        </Button>
+      </ToolbarGroup>
       <ToolbarSeparator />
       <ToolbarGroup>
         <ImageUploadButton text="Add" />
@@ -188,6 +206,7 @@ const MobileToolbarContent = ({ type, onBack }) => (
 );
 
 export function SimpleEditor() {
+  const liveblocks = useLiveblocksExtension();
   const params = useParams();
   const documentId = params?.documentId;
 
@@ -234,6 +253,7 @@ export function SimpleEditor() {
           enableClickSelection: true,
         },
       }),
+      liveblocks,
       HorizontalRule,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TaskList,
@@ -274,10 +294,15 @@ export function SimpleEditor() {
     const fetchDocContent = async () => {
       try {
         const res = await axios.post("/api/showEachDoc", { documentId });
-        console.log("ShowEachDoc response:", res.data);
 
         if (res.data?.docsContent?.content) {
-          editor.commands.setContent(res.data.docsContent.content);
+          const storage = editor.storage.liveblocks; // 👈 comes from useLiveblocksExtension
+          if (!storage || storage.isHydrated) return;
+
+          // only hydrate if liveblocks has no content yet
+          storage.update(() => {
+            editor.commands.setContent(res.data.docsContent.content);
+          });
         }
       } catch (err) {
         console.error("Failed to load document:", err);
@@ -348,6 +373,7 @@ export function SimpleEditor() {
           role="presentation"
           className="simple-editor-content"
         />
+        <Threads editor={editor} />
 
         {/* Keep Save button just in case */}
         {/* <button onClick={handleSave}>Save</button> */}

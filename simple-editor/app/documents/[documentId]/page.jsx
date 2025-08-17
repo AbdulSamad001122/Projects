@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { SimpleEditor } from "../../../components/tiptap-templates/simple/simple-editor";
 import { useParams } from "next/navigation";
 import axios from "axios";
+import { Room } from "./room";
 
 const DocumentIdPage = () => {
   // const params = useParams();
@@ -53,7 +54,13 @@ const DocumentIdPage = () => {
   //   fetchDocument();
   // }, [documentId]);
 
-  return <SimpleEditor/>;
+  return (
+    <>
+      <Room>
+        <SimpleEditor />
+      </Room>
+    </>
+  );
 };
 
 export default DocumentIdPage;
