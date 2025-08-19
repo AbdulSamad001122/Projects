@@ -18,6 +18,9 @@ declare global {
     UserMeta: {
       id: string;
       info: {
+        name: string;
+        avatar: string;
+
         // Example properties, for useSelf, useUser, useOthers, etc.
         // name: string;
         // avatar: string;
@@ -26,9 +29,9 @@ declare global {
 
     // Custom events, for useBroadcastEvent, useEventListener
     RoomEvent: {};
-      // Example has two events, using a union
-      // | { type: "PLAY" } 
-      // | { type: "REACTION"; emoji: "🔥" };
+    // Example has two events, using a union
+    // | { type: "PLAY" } 
+    // | { type: "REACTION"; emoji: "🔥" };
 
     // Custom metadata set on threads, for useThreads, useCreateThread, etc.
     ThreadMetadata: {
@@ -46,4 +49,4 @@ declare global {
   }
 }
 
-export {};
+export { };
