@@ -13,7 +13,7 @@ export function Room({ children }) {
   const { user } = useUser();
 
   return (
-    <LiveblocksProvider authEndpoint={"/api/liveblocks-auth"}> {/* Use auth endpoint instead of public API key */}
+    <LiveblocksProvider publicApiKey="pk_dev_A_cVN8T6vDcDg-7iMMb8n3UX6SUwoS3HR4PVahFiDtGoRzqixr-2dXN8mHlZodrk">
       <RoomProvider
         id={params.documentId}
         initialPresence={{

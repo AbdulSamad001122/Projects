@@ -94,7 +94,7 @@ import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
 import "@/components/tiptap-templates/simple/simple-editor.scss";
 
 import content from "@/components/tiptap-templates/simple/data/content.json";
-import { Threads } from "@/app/documents/[documentId]/Threads";
+import { Threads } from "@/app/documents/[documentId]/threads";
 
 const MainToolbarContent = ({ onHighlighterClick, onLinkClick, isMobile }) => {
   const { editor } = useCurrentEditor();
