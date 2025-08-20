@@ -13,39 +13,80 @@ export function Room({ children }) {
   const { user } = useUser();
 
   return (
-    <LiveblocksProvider
-      publicApiKey="pk_dev_A_cVN8T6vDcDg-7iMMb8n3UX6SUwoS3HR4PVahFiDtGoRzqixr-2dXN8mHlZodrk"
+   <LiveblocksProvider
+      authEndpoint="/api/liveblocks-auth"
       resolveUsers={async ({ userIds }) => {
         console.log("Resolving users:", userIds);
 
-        // ⚡️ Example: match Clerk user with Liveblocks userId
-        // In production, call your backend with userIds to fetch Clerk users.
-        return userIds.map((id) => ({
-          name: user?.fullName || "Anonymous",
-          avatar: user?.imageUrl || "",
-          // add custom metadata if needed
-        }));
+        try {
+          // ✅ Call your backend API to fetch actual user data
+          const response = await fetch('/api/resolve-users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userIds }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to resolve users');
+          }
+
+          const users = await response.json();
+          
+          // Return the correct user data for each ID
+          return users.map((user) => ({
+            name: user.name,
+            avatar: user.avatar,
+            color: user.color, // ✅ Include user color for cursors
+          }));
+        } catch (error) {
+          console.error('Error resolving users:', error);
+          // Fallback: return anonymous users
+          return userIds.map(() => ({
+            name: "Anonymous",
+            avatar: "",
+            color: "#999999", // ✅ Default gray color for anonymous users
+          }));
+        }
       }}
       resolveMentionSuggestions={async ({ text, roomId }) => {
-        // Fetch all users from your back end
-        let users = await __fetchAllUsers__();
+        try {
+          // Fetch all users from your backend API
+          const response = await fetch('/api/resolve-users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userIds: [] }), // Empty array to get all users
+          });
 
-        // If there's a query, filter for the relevant users
-        if (text) {
-          // Filter any way you'd like, e.g. checking if the name matches
-          users = users.filter((user) => user.name.includes(text));
+          if (!response.ok) {
+            throw new Error('Failed to fetch users for mentions');
+          }
+
+          let users = await response.json();
+
+          // If there's a query, filter for the relevant users
+          if (text) {
+            // Filter any way you'd like, e.g. checking if the name matches
+            users = users.filter((user) => user.name.toLowerCase().includes(text.toLowerCase()));
+          }
+
+          // Return the filtered `userIds`
+          return users.map((user) => user.id);
+        } catch (error) {
+          console.error('Error fetching users for mentions:', error);
+          return [];
         }
-
-        // Return the filtered `userIds`
-        return users.map((user) => user.id);
       }}
     >
       <RoomProvider
         id={params.documentId}
         initialPresence={{
-          cursor: null, // each user starts with no cursor
-          name: user?.fullName || "Anonymous", // ✅ Clerk full name here
-          avatar: user?.imageUrl, // ✅ Clerk profile image
+          cursor: null,
+          name: user?.fullName || "Anonymous",
+          avatar: user?.imageUrl || "",
         }}
       >
         <ClientSideSuspense fallback={<div>Loading…</div>}>
@@ -55,4 +96,3 @@ export function Room({ children }) {
     </LiveblocksProvider>
   );
 }
-
