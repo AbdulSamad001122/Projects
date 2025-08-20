@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClerkClient } from "@clerk/nextjs/server";
 
-const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
 
 // ✅ Color palette for consistent user colors
 const colors = [

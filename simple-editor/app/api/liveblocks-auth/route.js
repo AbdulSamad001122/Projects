@@ -34,7 +34,7 @@ export async function POST() {
       "#F8C471", // Orange
       "#82E0AA", // Light Green
     ];
-    
+
     // Use a simple hash function to assign a consistent color to each user
     const getUserColor = (userId) => {
       let hash = 0;
@@ -47,7 +47,9 @@ export async function POST() {
     // ✅ Create a new Liveblocks session
     const session = liveblocks.prepareSession(userId, {
       userInfo: {
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Anonymous",
+        name:
+          `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+          "Anonymous",
         avatar: user.imageUrl || "",
         email: user.emailAddresses?.[0]?.emailAddress || undefined,
         color: getUserColor(userId), // ✅ Assign unique color to each user

@@ -211,9 +211,16 @@ const MobileToolbarContent = ({ type, onBack }) => (
 );
 
 export function SimpleEditor() {
-  const liveblocks = useLiveblocksExtension();
   const params = useParams();
   const documentId = params?.documentId;
+
+  // Only use Liveblocks when in document context
+  let liveblocks;
+  try {
+    liveblocks = documentId ? useLiveblocksExtension() : null;
+  } catch (error) {
+    liveblocks = null;
+  }
 
   const isMobile = useIsMobile();
   const { height } = useWindowSize();
@@ -258,7 +265,7 @@ export function SimpleEditor() {
           enableClickSelection: true,
         },
       }),
-      liveblocks,
+      ...(liveblocks ? [liveblocks] : []),
       HorizontalRule,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TaskList,
@@ -301,13 +308,18 @@ export function SimpleEditor() {
         const res = await axios.post("/api/showEachDoc", { documentId });
 
         if (res.data?.docsContent?.content) {
-          const storage = editor.storage.liveblocks; // 👈 comes from useLiveblocksExtension
-          if (!storage || storage.isHydrated) return;
+          if (liveblocks) {
+            const storage = editor.storage.liveblocks; // 👈 comes from useLiveblocksExtension
+            if (!storage || storage.isHydrated) return;
 
-          // only hydrate if liveblocks has no content yet
-          storage.update(() => {
+            // only hydrate if liveblocks has no content yet
+            storage.update(() => {
+              editor.commands.setContent(res.data.docsContent.content);
+            });
+          } else {
+            // For standalone editor, directly set content
             editor.commands.setContent(res.data.docsContent.content);
-          });
+          }
         }
       } catch (err) {
         console.error("Failed to load document:", err);
@@ -378,7 +390,7 @@ export function SimpleEditor() {
           role="presentation"
           className="simple-editor-content"
         />
-        <Threads editor={editor} />
+        {documentId && <Threads editor={editor} />}
 
         {/* Keep Save button just in case */}
         {/* <button onClick={handleSave}>Save</button> */}
