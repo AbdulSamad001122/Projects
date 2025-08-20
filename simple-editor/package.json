@@ -1,13 +1,11 @@
-{
-  "name": "simple-editor",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "deploy": "npx prisma migrate deploy",
+  "vercel-build": "npx prisma generate && npx prisma migrate deploy && next build"
+},
   "dependencies": {
     "@clerk/nextjs": "^6.30.1",
     "@floating-ui/react": "^0.27.15",
