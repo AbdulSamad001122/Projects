@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // your prisma client import
-import { auth } from "@clerk/nextjs/server";
-import { currentUser } from "@clerk/nextjs/server";
-import { Content } from "next/font/google";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request) {
   try {

@@ -13,27 +13,27 @@ export function Room({ children }) {
   const { user } = useUser();
 
   return (
-    <LiveblocksProvider
+   <LiveblocksProvider
       authEndpoint="/api/liveblocks-auth"
       resolveUsers={async ({ userIds }) => {
         console.log("Resolving users:", userIds);
 
         try {
           // ✅ Call your backend API to fetch actual user data
-          const response = await fetch("/api/resolve-users", {
-            method: "POST",
+          const response = await fetch('/api/resolve-users', {
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({ userIds }),
           });
 
           if (!response.ok) {
-            throw new Error("Failed to resolve users");
+            throw new Error('Failed to resolve users');
           }
 
           const users = await response.json();
-
+          
           // Return the correct user data for each ID
           return users.map((user) => ({
             name: user.name,
@@ -41,7 +41,7 @@ export function Room({ children }) {
             color: user.color, // ✅ Include user color for cursors
           }));
         } catch (error) {
-          console.error("Error resolving users:", error);
+          console.error('Error resolving users:', error);
           // Fallback: return anonymous users
           return userIds.map(() => ({
             name: "Anonymous",
@@ -53,16 +53,16 @@ export function Room({ children }) {
       resolveMentionSuggestions={async ({ text, roomId }) => {
         try {
           // Fetch all users from your backend API
-          const response = await fetch("/api/resolve-users", {
-            method: "POST",
+          const response = await fetch('/api/resolve-users', {
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({ userIds: [] }), // Empty array to get all users
           });
 
           if (!response.ok) {
-            throw new Error("Failed to fetch users for mentions");
+            throw new Error('Failed to fetch users for mentions');
           }
 
           let users = await response.json();
@@ -70,15 +70,13 @@ export function Room({ children }) {
           // If there's a query, filter for the relevant users
           if (text) {
             // Filter any way you'd like, e.g. checking if the name matches
-            users = users.filter((user) =>
-              user.name.toLowerCase().includes(text.toLowerCase())
-            );
+            users = users.filter((user) => user.name.toLowerCase().includes(text.toLowerCase()));
           }
 
           // Return the filtered `userIds`
           return users.map((user) => user.id);
         } catch (error) {
-          console.error("Error fetching users for mentions:", error);
+          console.error('Error fetching users for mentions:', error);
           return [];
         }
       }}
