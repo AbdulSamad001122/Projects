@@ -48,7 +48,7 @@ export async function POST() {
     const session = liveblocks.prepareSession(userId, {
       userInfo: {
         name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Anonymous",
-        picture: user.imageUrl || undefined,
+        avatar: user.imageUrl || "",
         email: user.emailAddresses?.[0]?.emailAddress || undefined,
         color: getUserColor(userId), // ✅ Assign unique color to each user
       },

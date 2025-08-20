@@ -20,10 +20,7 @@ declare global {
       info: {
         name: string;
         avatar: string;
-
-        // Example properties, for useSelf, useUser, useOthers, etc.
-        // name: string;
-        // avatar: string;
+        color: string;
       };
     };
 

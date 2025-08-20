@@ -86,6 +86,7 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
 
 // --- Components ---
 import { ThemeToggle } from "@/components/tiptap-templates/simple/theme-toggle";
+import { ConnectedUsers } from "@/components/connected-users";
 
 // --- Lib ---
 import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
@@ -175,6 +176,10 @@ const MainToolbarContent = ({ onHighlighterClick, onLinkClick, isMobile }) => {
 
       <Spacer />
       {isMobile && <ToolbarSeparator />}
+      <ToolbarGroup>
+        <ConnectedUsers />
+      </ToolbarGroup>
+      <ToolbarSeparator />
       <ToolbarGroup>
         <ThemeToggle />
       </ToolbarGroup>
