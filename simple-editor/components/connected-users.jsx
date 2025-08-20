@@ -69,7 +69,7 @@ function LiveblocksConnectedUsers() {
 // Main component that conditionally renders based on context availability
 export function ConnectedUsers() {
   const roomContext = useContext(RoomContext);
-  
+
   // If no RoomProvider context, don't render anything
   if (!roomContext) {
     return null;
