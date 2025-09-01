@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { useClients } from "@/contexts/ClientContext";
+import { useInvoices } from "@/contexts/InvoiceContext";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,30 +39,22 @@ export default function ClientDashboard() {
   const params = useParams();
   const router = useRouter();
   const clientId = params.id;
+  const { getClientById, loading: clientsLoading } = useClients();
+  const { createInvoice, updateInvoice } = useInvoices();
 
-  const [client, setClient] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
 
-  const fetchClientData = useCallback(async () => {
-    try {
-      const response = await axios.get(`/api/clients/${clientId}`);
-      setClient(response.data);
-    } catch (error) {
-      console.error("Error fetching client:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [clientId]);
+  // Get client from context instead of making API call
+  const client = getClientById(clientId);
+  const loading = clientsLoading;
 
   useEffect(() => {
     if (clientId) {
       setSelectedClientId(clientId);
-      fetchClientData();
     }
-  }, [clientId, fetchClientData]);
+  }, [clientId]);
 
   const handleClientSelect = (selectedClient) => {
     router.push(`/dashboard/${selectedClient.id}`);
@@ -70,13 +64,26 @@ export default function ClientDashboard() {
     // Handle new client addition if needed
   };
 
-  const handleInvoiceCreated = (newInvoice) => {
-    console.log("Invoice created:", newInvoice);
-    // You can add logic here to update local state or refresh invoice list
+  const handleInvoiceCreated = async (responseData) => {
+    console.log("Invoice operation completed:", responseData);
+    
+    try {
+      const invoiceObject = responseData.invoice || responseData;
+      
+      if (editingInvoice) {
+        // For updates, pass the complete invoice object to context
+        await updateInvoice(editingInvoice.id, invoiceObject);
+      } else {
+        // For creation, pass the complete invoice object to context
+        await createInvoice(invoiceObject);
+      }
+    } catch (error) {
+      console.error("Error updating context:", error);
+    }
+    
+    // Close the form and reset editing state
     setShowInvoiceForm(false);
     setEditingInvoice(null);
-    // Optionally refresh the page or update invoice list
-    window.location.reload();
   };
 
   const handleEditInvoice = (invoice) => {

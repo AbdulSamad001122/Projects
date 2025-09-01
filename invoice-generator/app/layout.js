@@ -1,6 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ClientProvider } from "@/contexts/ClientContext";
+import { InvoiceProvider } from "@/contexts/InvoiceContext";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -27,11 +29,15 @@ export default function RootLayout({ children }) {
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <ThemeProvider>
-            <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
-              {children}
-            </main>
-            <Analytics />
-          </ThemeProvider>
+          <ClientProvider>
+            <InvoiceProvider>
+              <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                {children}
+              </main>
+              <Analytics />
+            </InvoiceProvider>
+          </ClientProvider>
+        </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

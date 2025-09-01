@@ -28,13 +28,13 @@ export default function Navbar({ className, insideSidebar = false }) {
   }
 
   return (
-    <nav className={cn("border-b bg-white dark:bg-gray-900 dark:border-gray-700 fixed top-0 z-40", sidebarAwareClass, className)}>
+    <nav className={cn("border-b bg-white dark:bg-gree-900 dark:border-gray-700 fixed top-0 z-40", sidebarAwareClass, className)}>
       <div className="px-4">
         <div className="flex justify-between items-center h-14">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <FileText className="h-6 w-6" />
-            <span className="font-bold text-xl">Invoice Generator</span>
+            <span className="font-bold text-xl">Paddu Generator</span>
           </Link>
 
           {/* Navigation Items */}

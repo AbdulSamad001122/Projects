@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { auth, createClerkClient } from "@clerk/nextjs/server";
-
-const prisma = new PrismaClient();
+import { auth } from "@clerk/nextjs/server";
+import { getCachedUser } from "@/lib/userCache";
+import prisma from "@/lib/prisma";
 
 export async function POST(request) {
   try {
@@ -25,20 +24,8 @@ export async function POST(request) {
     console.log("Client ID:", clientId);
     console.log("Invoice data:", invoiceData);
 
-    // Ensure user exists in database
-    let user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      // Create user if doesn't exist
-      user = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          name: "User", // Default name, can be updated later
-        },
-      });
-    }
+    // Use cached user lookup to reduce database queries
+    const user = await getCachedUser(userId);
 
     // Create new invoice in database
     const newInvoice = await prisma.invoice.create({

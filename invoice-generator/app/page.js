@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useClients } from "@/contexts/ClientContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +42,10 @@ import axios from "axios";
 
 export default function Home() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { addClient } = useClients();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", email: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clients, setClients] = useState([]);
 
   // Show loading state while Clerk is loading
   if (!isLoaded) {
@@ -87,14 +88,12 @@ export default function Home() {
 
     setIsSubmitting(true);
     try {
-      const response = await axios.post("/api/clients", {
+      const newClient = await addClient({
         name: clientForm.name,
         email: clientForm.email || null,
       });
 
-      console.log("Created client:", response.data);
-      // Add the new client to the list
-      setClients((prev) => [response.data, ...prev]);
+      console.log("Created client:", newClient);
 
       // Reset form and close dialog
       setClientForm({ name: "", email: "" });

@@ -38,45 +38,37 @@ import {
   X,
   CheckCircle,
 } from "lucide-react";
-import axios from "axios";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
+import { useInvoices } from "@/contexts/InvoiceContext";
 
 export default function InvoiceList({ clientId, onEditInvoice }) {
-  const [invoices, setInvoices] = useState([]);
+  const {
+    getInvoicesForClient,
+    loading,
+    error,
+    fetchInvoices,
+    deleteInvoice,
+    updateInvoiceStatus
+  } = useInvoices();
+  
   const [filteredInvoices, setFilteredInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [searchStatus, setSearchStatus] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
 
+  // Get invoices from context
+  const invoices = getInvoicesForClient(clientId);
+  const isLoading = loading[clientId] || false;
+  const fetchError = error[clientId] || null;
+
   useEffect(() => {
     if (clientId) {
-      fetchInvoices();
+      fetchInvoices(clientId);
     }
   }, [clientId]);
-
-  const fetchInvoices = async () => {
-    try {
-      setLoading(true);
-      // You can implement this API endpoint later
-      const response = await axios.get(`/api/invoices?clientId=${clientId}`);
-      const invoiceData = response.data.invoices || [];
-      setInvoices(invoiceData);
-      setFilteredInvoices(invoiceData);
-    } catch (error) {
-      console.error("Error fetching invoices:", error);
-      setError("Failed to load invoices");
-      // For now, set empty array if API doesn't exist
-      setInvoices([]);
-      setFilteredInvoices([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Filter invoices based on search criteria
   useEffect(() => {
@@ -178,10 +170,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   const confirmDelete = async () => {
     if (invoiceToDelete) {
       try {
-        await axios.delete(`/api/invoices?id=${invoiceToDelete}`);
-        setInvoices(
-          invoices.filter((invoice) => invoice.id !== invoiceToDelete)
-        );
+        await deleteInvoice(invoiceToDelete, clientId);
         setDeleteDialogOpen(false);
         setInvoiceToDelete(null);
       } catch (error) {
@@ -198,19 +187,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
 
   const handleStatusChange = async (invoiceId, newStatus) => {
     try {
-      const response = await axios.patch(`/api/invoices?id=${invoiceId}`, {
-        status: newStatus,
-      });
-
-      // Update the local state
-      setInvoices(
-        invoices.map((invoice) =>
-          invoice.id === invoiceId
-            ? { ...invoice, data: { ...invoice.data, status: newStatus } }
-            : invoice
-        )
-      );
-
+      await updateInvoiceStatus(invoiceId, newStatus, clientId);
       console.log(`Invoice status updated to ${newStatus}`);
     } catch (error) {
       console.error("Error updating invoice status:", error);
@@ -277,7 +254,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     );
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
@@ -295,7 +272,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     );
   }
 
-  if (error) {
+  if (fetchError) {
     return (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
@@ -303,8 +280,8 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
           <CardDescription className="dark:text-gray-300">Error loading invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-red-500 dark:text-red-400">{error}</p>
-          <Button onClick={fetchInvoices} className="mt-4">
+          <p className="text-red-500 dark:text-red-400">{fetchError}</p>
+          <Button onClick={() => fetchInvoices(clientId, true)} className="mt-4">
             Retry
           </Button>
         </CardContent>

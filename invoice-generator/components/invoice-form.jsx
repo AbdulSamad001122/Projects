@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -62,12 +63,46 @@ export default function InvoiceForm({
     };
   });
 
+  // Update form data when invoice prop changes
+  useEffect(() => {
+    if (invoice) {
+      const invoiceData = invoice.data || {};
+      setFormData({
+        invoiceNumber: invoiceData?.invoiceNumber || "",
+        issueDate:
+          invoiceData?.issueDate || new Date().toISOString().split("T")[0],
+        dueDate: invoiceData?.dueDate || "",
+        status: invoiceData?.status || "PENDING",
+        // Company Information
+        companyName: invoiceData?.companyName || "",
+        companyEmail: invoiceData?.companyEmail || "",
+        companyLogo: invoiceData?.companyLogo || "",
+        // Client Information
+        clientName: invoiceData?.clientName || "",
+        clientEmail: invoiceData?.clientEmail || "",
+        // Items and Calculations
+        items: invoiceData?.items || [{ description: "", quantity: 1, rate: 0 }],
+        taxRate: invoiceData?.taxRate || 0,
+        discountRate: invoiceData?.discountRate || 0,
+        // Additional Information
+        notes: invoiceData?.notes || "",
+        terms: invoiceData?.terms || "",
+        // Payment Information
+        bankName: invoiceData?.bankName || "",
+        bankAccount: invoiceData?.bankAccount || "",
+      });
+    }
+  }, [invoice]);
+
   const [errors, setErrors] = useState({});
+  const [isLoadingAutoData, setIsLoadingAutoData] = useState(false);
+  const [showStatusOnPDF, setShowStatusOnPDF] = useState(false);
 
   // Auto-generate invoice number based on client's previous invoices
   useEffect(() => {
     const generateInvoiceNumber = async () => {
       if (preselectedClient && preselectedClient.id && !invoice) {
+        setIsLoadingAutoData(true);
         try {
           // Fetch existing invoices for this client
           const response = await axios.get(
@@ -94,6 +129,8 @@ export default function InvoiceForm({
             clientName: preselectedClient.name || "",
             clientEmail: preselectedClient.email || "",
           }));
+        } finally {
+          setIsLoadingAutoData(false);
         }
       }
     };
@@ -247,42 +284,107 @@ export default function InvoiceForm({
 
 
 
+  const generateInvoiceData = () => {
+    return {
+      companyName: formData.companyName,
+      companyEmail: formData.companyEmail,
+      companyLogo: formData.companyLogo,
+      clientName: formData.clientName,
+      clientEmail: formData.clientEmail,
+      invoiceNumber: formData.invoiceNumber,
+      invoiceDate: formData.issueDate,
+      dueDate: formData.dueDate,
+      status: formData.status,
+      showStatusOnPDF: showStatusOnPDF,
+      items: formData.items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.quantity * item.rate,
+      })),
+      taxRate: formData.taxRate,
+      discountRate: formData.discountRate,
+      notes: formData.notes || "Thank you for your business!",
+      terms: formData.terms,
+      bankName: formData.bankName,
+      bankAccount: formData.bankAccount,
+    };
+  };
+
   const previewPDF = async () => {
     if (!validateForm()) {
       return;
     }
 
     try {
-      const invoiceData = {
-        companyName: formData.companyName,
-        companyEmail: formData.companyEmail,
-        companyLogo: formData.companyLogo,
-        clientName: formData.clientName,
-        clientEmail: formData.clientEmail,
-        invoiceNumber: formData.invoiceNumber,
-        invoiceDate: formData.issueDate,
-        dueDate: formData.dueDate,
-        status: formData.status,
-        items: formData.items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.quantity * item.rate,
-        })),
-        taxRate: formData.taxRate,
-        discountRate: formData.discountRate,
-        notes: formData.notes || "Thank you for your business!",
-        terms: formData.terms,
-        bankName: formData.bankName,
-        bankAccount: formData.bankAccount,
-      };
-
+      const invoiceData = generateInvoiceData();
       const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
     } catch (error) {
       console.error("Error generating PDF preview:", error);
       alert("Error generating PDF preview. Please try again.");
+    }
+  };
+
+  const downloadPDF = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      const invoiceData = generateInvoiceData();
+      const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${invoiceData.invoiceNumber || 'invoice'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      alert("Error downloading PDF. Please try again.");
+    }
+  };
+
+  const handleCreateAndDownload = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      // First create/update the invoice
+      const invoicePayload = {
+        ...formData,
+        clientId: preselectedClient?.id || null,
+      };
+
+      let response;
+      if (invoice && invoice.id) {
+        response = await axios.put(`/api/invoices?id=${invoice.id}`, invoicePayload);
+      } else {
+        response = await axios.post("/api/createInvoice", invoicePayload);
+      }
+
+      // Then download the PDF
+      const invoiceData = generateInvoiceData();
+      const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${invoiceData.invoiceNumber || 'invoice'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Call the callback to update the UI
+      onInvoiceCreated(response.data);
+    } catch (error) {
+      console.error("Error creating and downloading invoice:", error);
+      alert("Error creating and downloading invoice. Please try again.");
     }
   };
 
@@ -306,12 +408,14 @@ export default function InvoiceForm({
                 <Label htmlFor="invoiceNumber">Invoice Number *</Label>
                 <Input
                   id="invoiceNumber"
-                  value={formData.invoiceNumber}
+                  value={isLoadingAutoData ? "Generating..." : formData.invoiceNumber}
                   onChange={(e) =>
                     handleInputChange("invoiceNumber", e.target.value)
                   }
-                  placeholder="INV-001"
-                  className={errors.invoiceNumber ? "border-red-500" : ""}
+                  placeholder={isLoadingAutoData ? "Generating invoice number..." : "INV-001"}
+                  className={`${errors.invoiceNumber ? "border-red-500" : ""} ${isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""}`}
+                  disabled={isLoadingAutoData}
+                  readOnly={isLoadingAutoData}
                 />
                 {errors.invoiceNumber && (
                   <p className="text-red-500 text-sm mt-1">
@@ -366,6 +470,18 @@ export default function InvoiceForm({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* PDF Options */}
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="showStatusOnPDF"
+                checked={showStatusOnPDF}
+                onCheckedChange={setShowStatusOnPDF}
+              />
+              <Label htmlFor="showStatusOnPDF" className="text-sm font-medium">
+                Show status on downloaded PDF
+              </Label>
             </div>
 
             <Separator />
@@ -467,12 +583,14 @@ export default function InvoiceForm({
                   <Label htmlFor="clientName">Client Name *</Label>
                   <Input
                     id="clientName"
-                    value={formData.clientName}
+                    value={isLoadingAutoData ? "Fetching client info..." : formData.clientName}
                     onChange={(e) =>
                       handleInputChange("clientName", e.target.value)
                     }
-                    placeholder="John Doe"
-                    className={errors.clientName ? "border-red-500" : ""}
+                    placeholder={isLoadingAutoData ? "Loading client name..." : "John Doe"}
+                    className={`${errors.clientName ? "border-red-500" : ""} ${isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""}`}
+                    disabled={isLoadingAutoData}
+                    readOnly={isLoadingAutoData}
                   />
                   {errors.clientName && (
                     <p className="text-red-500 text-sm mt-1">
@@ -488,12 +606,14 @@ export default function InvoiceForm({
                   <Input
                     id="clientEmail"
                     type="email"
-                    value={formData.clientEmail}
+                    value={isLoadingAutoData ? "Fetching client email..." : formData.clientEmail}
                     onChange={(e) =>
                       handleInputChange("clientEmail", e.target.value)
                     }
-                    placeholder="john@example.com"
-                    className={errors.clientEmail ? "border-red-500" : ""}
+                    placeholder={isLoadingAutoData ? "Loading client email..." : "john@example.com"}
+                    className={`${errors.clientEmail ? "border-red-500" : ""} ${isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""}`}
+                    disabled={isLoadingAutoData}
+                    readOnly={isLoadingAutoData}
                   />
                   {errors.clientEmail && (
                     <p className="text-red-500 dark:text-red-400 text-sm mt-1">
@@ -786,6 +906,14 @@ export default function InvoiceForm({
                 <Button type="button" variant="outline" onClick={previewPDF}>
                   Preview PDF
                 </Button>
+                <Button type="button" variant="outline" onClick={downloadPDF}>
+                  Download Only
+                </Button>
+                {!invoice && (
+                  <Button type="button" onClick={handleCreateAndDownload}>
+                    Create & Download
+                  </Button>
+                )}
                 <Button type="submit">
                   {invoice ? "Update Invoice" : "Create Invoice"}
                 </Button>

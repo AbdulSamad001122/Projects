@@ -322,6 +322,7 @@ const InvoicePDF = ({ invoiceData }) => {
     discountRate,
     notes,
     terms,
+    showStatusOnPDF = false,
   } = invoiceData;
 
   // Calculate totals
@@ -341,18 +342,20 @@ const InvoicePDF = ({ invoiceData }) => {
               <Text style={styles.invoiceNumber}>
                 NO: {invoiceNumber || "INV-12345-1"}
               </Text>
-              <Text
-                style={[
-                  styles.statusBadge,
-                  invoiceData.status === "PAID"
-                    ? styles.statusPaid
-                    : invoiceData.status === "CANCELLED"
-                    ? styles.statusCancelled
-                    : styles.statusPending,
-                ]}
-              >
-                {invoiceData.status || "PENDING"}
-              </Text>
+              {showStatusOnPDF && (
+                <Text
+                  style={[
+                    styles.statusBadge,
+                    invoiceData.status === "PAID"
+                      ? styles.statusPaid
+                      : invoiceData.status === "CANCELLED"
+                      ? styles.statusCancelled
+                      : styles.statusPending,
+                  ]}
+                >
+                  {invoiceData.status || "PENDING"}
+                </Text>
+              )}
             </View>
           </View>
           {companyLogo && (

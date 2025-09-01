@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { useClients } from "@/contexts/ClientContext";
 import {
   Sidebar,
   SidebarContent,
@@ -45,33 +46,11 @@ import axios from "axios";
 export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
   const { user } = useUser();
   const router = useRouter();
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { clients, loading, addClient } = useClients();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", email: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    fetchClients();
-  }, []);
-
-  const fetchClients = async () => {
-    try {
-      const response = await axios.get("/api/clients");
-      setClients(response.data);
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      // For now, use mock data if API fails
-      setClients([
-        { id: 1, name: "John Doe", email: "john@example.com" },
-        { id: 2, name: "Jane Smith", email: "jane@example.com" },
-        { id: 3, name: "Bob Johnson", email: "bob@example.com" },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreateClient = async (e) => {
     e.preventDefault();
@@ -79,18 +58,16 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
 
     setIsSubmitting(true);
     try {
-      const response = await axios.post("/api/clients", {
+      const newClient = await addClient({
         name: clientForm.name,
         email: clientForm.email || null,
       });
 
-      console.log("Created client:", response.data);
-      // Add the new client to the list
-      setClients((prev) => [response.data, ...prev]);
+      console.log("Created client:", newClient);
 
       // Call the parent callback if provided
       if (onAddClient) {
-        onAddClient(response.data);
+        onAddClient(newClient);
       }
 
       // Reset form and close dialog

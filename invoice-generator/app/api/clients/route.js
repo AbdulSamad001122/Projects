@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { auth, createClerkClient } from "@clerk/nextjs/server";
-
-const prisma = new PrismaClient();
-const clerkClient = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY,
-});
+import { auth } from "@clerk/nextjs/server";
+import { getCachedUser } from "@/lib/userCache";
+import prisma from "@/lib/prisma";
 
 // GET /api/clients - Fetch all clients for the authenticated user
 export async function GET() {
@@ -16,22 +12,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await clerkClient.users.getUser(userId);
-    const username = user.username || user.firstName || "Unknown";
-
-    // Find or create user in database
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          name: username,
-          clerkId: userId,
-        },
-      });
-    }
+    // Use cached user lookup to reduce database queries
+    const dbUser = await getCachedUser(userId);
 
     // Fetch clients for this user
     const clients = await prisma.client.findMany({
@@ -81,22 +63,8 @@ export async function POST(request) {
       }
     }
 
-    const user = await clerkClient.users.getUser(userId);
-    const username = user.username || user.firstName || "Unknown";
-
-    // Find or create user in database
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          name: username,
-          clerkId: userId,
-        },
-      });
-    }
+    // Use cached user lookup to reduce database queries
+    const dbUser = await getCachedUser(userId);
 
     // add client into Db
     const newClient = await prisma.client.create({
@@ -131,22 +99,8 @@ export async function PUT(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await clerkClient.users.getUser(userId);
-    const username = user.username || user.firstName || "Unknown";
-
-    // Find or create user in database
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          name: username,
-          clerkId: userId,
-        },
-      });
-    }
+    // Use cached user lookup to reduce database queries
+    const dbUser = await getCachedUser(userId);
 
     const body = await request.json();
     const { id, name, email } = body;
@@ -208,15 +162,28 @@ export async function DELETE(request) {
       );
     }
 
-    // Delete client from database
-    await prisma.client.delete({
-      where: { id },
-    });
+    // Use cached user lookup to reduce database queries
+    const dbUser = await getCachedUser(userId);
 
-    return NextResponse.json(
-      { message: "Client deleted successfully" },
-      { status: 200 }
-    );
+    // Delete client from database with ownership verification
+    try {
+      await prisma.client.delete({
+        where: { 
+          id,
+          userId: dbUser.id // Ensure user owns the client
+        },
+      });
+
+      return NextResponse.json(
+        { message: "Client deleted successfully" },
+        { status: 200 }
+      );
+    } catch (deleteError) {
+      if (deleteError.code === 'P2025') {
+        return NextResponse.json({ error: "Client not found" }, { status: 404 });
+      }
+      throw deleteError;
+    }
   } catch (error) {
     console.error("Error deleting client:", error);
     return NextResponse.json(

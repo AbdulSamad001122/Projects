@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { auth } from "@clerk/nextjs/server";
+import { getCachedUser } from "@/lib/userCache";
+import prisma from "@/lib/prisma";
 
 export async function GET(request, { params }) {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const resolvedParams = await params;
     const clientId = resolvedParams.id;
     
@@ -12,10 +18,14 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Client ID is required" }, { status: 400 });
     }
 
-    // Find the specific client
+    // Use cached user lookup to reduce database queries
+    const dbUser = await getCachedUser(userId);
+
+    // Find the specific client that belongs to the authenticated user
     const client = await prisma.client.findUnique({
       where: {
         id: clientId,
+        userId: dbUser.id,
       },
     });
 

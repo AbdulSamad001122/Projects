@@ -62,5 +62,6 @@ model Invoice {
   @@index([userId])
   @@index([clientId])
   @@index([userId, clientId])
+  @@index([clientId, createdAt(sort: Desc)]) // Optimize invoice listing by client with date sorting
   @@map("invoices")
 }

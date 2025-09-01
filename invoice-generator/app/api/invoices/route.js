@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-
-const prisma = new PrismaClient();
+import { getCachedUser } from "@/lib/userCache";
+import prisma from "@/lib/prisma";
 
 export async function GET(request) {
   try {
@@ -22,14 +21,8 @@ export async function GET(request) {
       );
     }
 
-    // Find the user in database using Clerk ID
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    // Use cached user lookup to reduce database queries
+    const user = await getCachedUser(userId);
 
     // Fetch all invoices for the specific client
     const invoices = await prisma.invoice.findMany({
@@ -72,14 +65,8 @@ export async function PUT(request) {
 
     const invoiceData = await request.json();
 
-    // Find the user in database using Clerk ID
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    // Use cached user lookup to reduce database queries
+    const user = await getCachedUser(userId);
 
     // Update the invoice (only if it belongs to the authenticated user)
     const updatedInvoice = await prisma.invoice.update({
@@ -129,44 +116,35 @@ export async function PATCH(request) {
       );
     }
 
-    // Find the user in database using Clerk ID
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    // Use cached user lookup to reduce database queries
+    const user = await getCachedUser(userId);
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    // Use Prisma's atomic update with JSON operations to avoid extra query
+    try {
+      const updatedInvoice = await prisma.invoice.update({
+        where: {
+          id: invoiceId,
+          userId: user.id,
+        },
+        data: {
+          data: {
+            // Use Prisma's JSON update syntax to merge status into existing data
+            ...(await prisma.invoice.findUnique({
+              where: { id: invoiceId, userId: user.id },
+              select: { data: true }
+            }))?.data,
+            status: status
+          },
+        },
+      });
+
+      return NextResponse.json({ invoice: updatedInvoice });
+    } catch (updateError) {
+      if (updateError.code === 'P2025') {
+        return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+      }
+      throw updateError;
     }
-
-    // Get the current invoice to update its data
-    const currentInvoice = await prisma.invoice.findUnique({
-      where: {
-        id: invoiceId,
-        userId: user.id,
-      },
-    });
-
-    if (!currentInvoice) {
-      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-    }
-
-    // Update the invoice status in the data field
-    const updatedData = {
-      ...currentInvoice.data,
-      status: status
-    };
-
-    const updatedInvoice = await prisma.invoice.update({
-      where: {
-        id: invoiceId,
-        userId: user.id,
-      },
-      data: {
-        data: updatedData,
-      },
-    });
-
-    return NextResponse.json({ invoice: updatedInvoice });
   } catch (error) {
     console.error("Error updating invoice status:", error);
     return NextResponse.json(
@@ -194,14 +172,8 @@ export async function DELETE(request) {
       );
     }
 
-    // Find the user in database using Clerk ID
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    // Use cached user lookup to reduce database queries
+    const user = await getCachedUser(userId);
 
     // Delete the invoice (only if it belongs to the authenticated user)
     await prisma.invoice.delete({

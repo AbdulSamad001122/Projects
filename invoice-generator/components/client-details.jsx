@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+// import { useEffect } from "react"; // No longer needed
 import {
   Card,
   CardContent,
@@ -11,32 +11,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FileText, Download, Calendar, DollarSign } from "lucide-react";
+import { useInvoices } from "@/contexts/InvoiceContext";
 
 export function ClientDetails({ client, onCreateInvoice }) {
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    getInvoicesForClient,
+    loading,
+    fetchInvoices
+  } = useInvoices();
 
-  useEffect(() => {
-    if (client) {
-      fetchInvoices();
-    }
-  }, [client]);
+  // Get invoices from context
+  const invoices = client ? getInvoicesForClient(client.id) : [];
+  const isLoading = client ? loading[client.id] || false : false;
 
-  const fetchInvoices = async () => {
-    try {
-      const response = await fetch(`/api/invoices?clientId=${client.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setInvoices(data.invoices);
-      } else {
-        console.error("Failed to fetch invoices");
-      }
-    } catch (error) {
-      console.error("Error fetching invoices:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Removed fetchInvoices call - invoice-list component handles fetching
+  // useEffect(() => {
+  //   if (client) {
+  //     fetchInvoices(client.id);
+  //   }
+  // }, [client?.id]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
@@ -132,7 +125,7 @@ export function ClientDetails({ client, onCreateInvoice }) {
           </Badge>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground dark:text-gray-400">Loading invoices...</p>
           </div>
