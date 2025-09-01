@@ -238,45 +238,71 @@ const styles = StyleSheet.create({
   footerSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 25,
+    marginBottom: 20,
+    paddingHorizontal: 10,
   },
   notesSection: {
-    width: "45%",
+    width: "48%",
+    paddingRight: 15,
   },
   paymentSection: {
-    width: "45%",
-  },
-  thankYouSection: {
-    width: "45%",
-    alignItems: "center",
-    justifyContent: "center",
+    width: "48%",
+    paddingLeft: 15,
   },
   notesTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "bold",
     color: "#374151",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   notesText: {
-    fontSize: 9,
+    fontSize: 10,
     color: "#6B7280",
-    lineHeight: 1.3,
+    lineHeight: 1.4,
+    textAlign: "justify",
   },
   paymentTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "bold",
     color: "#374151",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   paymentText: {
-    fontSize: 9,
+    fontSize: 10,
     color: "#6B7280",
-    marginBottom: 2,
+    marginBottom: 3,
+    lineHeight: 1.3,
   },
-  thankYouText: {
-    fontSize: 24,
+  termsSection: {
+    marginTop: 20,
+    marginBottom: 25,
+    paddingHorizontal: 10,
+  },
+  termsTitle: {
+    fontSize: 12,
     fontWeight: "bold",
     color: "#374151",
+    marginBottom: 8,
+  },
+  termsText: {
+    fontSize: 10,
+    color: "#6B7280",
+    lineHeight: 1.4,
+    textAlign: "justify",
+  },
+  thankYouSection: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+    paddingVertical: 15,
+  },
+  thankYouText: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#1E40AF",
+    textAlign: "center",
   },
 });
 
@@ -287,7 +313,6 @@ const InvoicePDF = ({ invoiceData }) => {
     companyEmail,
     companyLogo,
     clientName,
-    clientPhone,
     clientEmail,
     invoiceNumber,
     invoiceDate,
@@ -296,6 +321,7 @@ const InvoicePDF = ({ invoiceData }) => {
     taxRate,
     discountRate,
     notes,
+    terms,
   } = invoiceData;
 
   // Calculate totals
@@ -331,7 +357,11 @@ const InvoicePDF = ({ invoiceData }) => {
           </View>
           {companyLogo && (
             <View style={styles.headerCenter}>
-              <Image src={companyLogo} style={styles.companyLogo} alt="Company Logo" />
+              <Image
+                src={companyLogo}
+                style={styles.companyLogo}
+                alt="Company Logo"
+              />
             </View>
           )}
         </View>
@@ -341,7 +371,6 @@ const InvoicePDF = ({ invoiceData }) => {
           <View style={styles.billToSection}>
             <Text style={styles.sectionTitle}>Bill To:</Text>
             <Text style={styles.text}>{clientName || "Estelle Darcy"}</Text>
-            <Text style={styles.text}>{clientPhone || "+123-456-7890"}</Text>
             <Text style={styles.text}>
               {clientEmail || "client@example.com"}
             </Text>
@@ -362,6 +391,10 @@ const InvoicePDF = ({ invoiceData }) => {
             <Text style={styles.dateValue}>
               {invoiceDate || "26 June 2022"}
             </Text>
+          </View>
+          <View style={styles.dateItem}>
+            <Text style={styles.dateLabel}>Due Date:</Text>
+            <Text style={styles.dateValue}>{dueDate || "26 July 2022"}</Text>
           </View>
         </View>
 
@@ -449,9 +482,10 @@ const InvoicePDF = ({ invoiceData }) => {
         {/* Footer Section */}
         <View style={styles.footerSection}>
           <View style={styles.notesSection}>
-            <Text style={styles.notesTitle}>Note:</Text>
+            <Text style={styles.notesTitle}>Notes:</Text>
             <Text style={styles.notesText}>
-              {notes || "Thank you for your business!"}
+              {notes ||
+                "Thank you for your business! We appreciate your trust in our services and look forward to working with you again."}
             </Text>
           </View>
           <View style={styles.paymentSection}>
@@ -463,9 +497,19 @@ const InvoicePDF = ({ invoiceData }) => {
               Account: {invoiceData.bankAccount || "123-456-7890"}
             </Text>
           </View>
-          <View style={styles.thankYouSection}>
-            <Text style={styles.thankYouText}>Thank You!</Text>
+        </View>
+
+        {/* Terms and Conditions Section */}
+        {terms && (
+          <View style={styles.termsSection}>
+            <Text style={styles.termsTitle}>Terms and Conditions:</Text>
+            <Text style={styles.termsText}>{terms}</Text>
           </View>
+        )}
+
+        {/* Thank You Section - Centered at the end */}
+        <View style={styles.thankYouSection}>
+          <Text style={styles.thankYouText}>Thank You!</Text>
         </View>
       </Page>
     </Document>

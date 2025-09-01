@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Plus, Download } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
 import axios from "axios";
@@ -48,7 +48,6 @@ export default function InvoiceForm({
       // Client Information
       clientName: invoiceData?.clientName || "",
       clientEmail: invoiceData?.clientEmail || "",
-      clientPhone: invoiceData?.clientPhone || "",
 
       // Items and Calculations
       items: invoiceData?.items || [{ description: "", quantity: 1, rate: 0 }],
@@ -64,6 +63,43 @@ export default function InvoiceForm({
   });
 
   const [errors, setErrors] = useState({});
+
+  // Auto-generate invoice number based on client's previous invoices
+  useEffect(() => {
+    const generateInvoiceNumber = async () => {
+      if (preselectedClient && preselectedClient.id && !invoice) {
+        try {
+          // Fetch existing invoices for this client
+          const response = await axios.get(
+            `/api/invoices?clientId=${preselectedClient.id}`
+          );
+          const invoices = response.data.invoices || [];
+
+          // Generate next invoice number
+          const nextInvoiceNumber = `INV-${invoices.length + 1}`;
+
+          // Update form data with auto-generated invoice number
+          setFormData((prev) => ({
+            ...prev,
+            invoiceNumber: nextInvoiceNumber,
+            clientName: preselectedClient.name || "",
+            clientEmail: preselectedClient.email || "",
+          }));
+        } catch (error) {
+          console.error("Error generating invoice number:", error);
+          // Fallback to INV-1 if there's an error
+          setFormData((prev) => ({
+            ...prev,
+            invoiceNumber: "INV-1",
+            clientName: preselectedClient.name || "",
+            clientEmail: preselectedClient.email || "",
+          }));
+        }
+      }
+    };
+
+    generateInvoiceNumber();
+  }, [preselectedClient, invoice]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -207,121 +243,9 @@ export default function InvoiceForm({
     }, 0);
   };
 
-  const downloadPDF = async () => {
-    if (!validateForm()) {
-      return;
-    }
 
-    try {
-      const invoiceData = {
-        companyName: formData.companyName,
-        companyEmail: formData.companyEmail,
-        companyLogo: formData.companyLogo,
-        clientName: formData.clientName,
-        clientEmail: formData.clientEmail,
-        clientPhone: formData.clientPhone,
-        invoiceNumber: formData.invoiceNumber,
-        invoiceDate: formData.issueDate,
-        dueDate: formData.dueDate,
-        status: formData.status,
-        items: formData.items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.quantity * item.rate,
-        })),
-        taxRate: formData.taxRate,
-        discountRate: formData.discountRate,
-        notes: formData.notes || "Thank you for your business!",
-        terms: formData.terms,
-        bankName: formData.bankName,
-        bankAccount: formData.bankAccount,
-      };
 
-      const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `invoice-${formData.invoiceNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Error generating PDF. Please try again.");
-    }
-  };
 
-  const createAndDownloadPDF = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      // First create the invoice in the database
-      const invoicePayload = {
-        ...formData,
-        clientId: preselectedClient?.id || null,
-      };
-
-      let response;
-      if (invoice && invoice.id) {
-        // Update existing invoice
-        response = await axios.put(
-          `/api/invoices?id=${invoice.id}`,
-          invoicePayload
-        );
-        console.log("Invoice updated successfully:", response.data);
-      } else {
-        // Create new invoice
-        response = await axios.post("/api/createInvoice", invoicePayload);
-        console.log("Invoice created successfully:", response.data);
-      }
-
-      // Then download the PDF
-      const invoiceData = {
-        companyName: formData.companyName,
-        companyEmail: formData.companyEmail,
-        companyLogo: formData.companyLogo,
-        clientName: formData.clientName,
-        clientEmail: formData.clientEmail,
-        clientPhone: formData.clientPhone,
-        invoiceNumber: formData.invoiceNumber,
-        invoiceDate: formData.issueDate,
-        dueDate: formData.dueDate,
-        status: formData.status,
-        items: formData.items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.quantity * item.rate,
-        })),
-        taxRate: formData.taxRate,
-        discountRate: formData.discountRate,
-        notes: formData.notes || "Thank you for your business!",
-        terms: formData.terms,
-        bankName: formData.bankName,
-        bankAccount: formData.bankAccount,
-      };
-
-      const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `invoice-${formData.invoiceNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      // Call the callback to update the parent component
-      onInvoiceCreated(response.data);
-    } catch (error) {
-      console.error("Error creating invoice and downloading PDF:", error);
-      alert("Error creating invoice and downloading PDF. Please try again.");
-    }
-  };
 
   const previewPDF = async () => {
     if (!validateForm()) {
@@ -335,7 +259,6 @@ export default function InvoiceForm({
         companyLogo: formData.companyLogo,
         clientName: formData.clientName,
         clientEmail: formData.clientEmail,
-        clientPhone: formData.clientPhone,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: formData.issueDate,
         dueDate: formData.dueDate,
@@ -410,7 +333,9 @@ export default function InvoiceForm({
               </div>
 
               <div>
-                <Label htmlFor="dueDate" className="dark:text-gray-200">Due Date *</Label>
+                <Label htmlFor="dueDate" className="dark:text-gray-200">
+                  Due Date *
+                </Label>
                 <Input
                   id="dueDate"
                   type="date"
@@ -419,7 +344,9 @@ export default function InvoiceForm({
                   className={errors.dueDate ? "border-red-500" : ""}
                 />
                 {errors.dueDate && (
-                  <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.dueDate}</p>
+                  <p className="text-red-500 dark:text-red-400 text-sm mt-1">
+                    {errors.dueDate}
+                  </p>
                 )}
               </div>
 
@@ -488,7 +415,9 @@ export default function InvoiceForm({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="companyLogo" className="dark:text-gray-200">Company Logo</Label>
+                  <Label htmlFor="companyLogo" className="dark:text-gray-200">
+                    Company Logo
+                  </Label>
                   <Input
                     id="companyLogo"
                     type="file"
@@ -553,7 +482,9 @@ export default function InvoiceForm({
                 </div>
 
                 <div>
-                  <Label htmlFor="clientEmail" className="dark:text-gray-200">Client Email *</Label>
+                  <Label htmlFor="clientEmail" className="dark:text-gray-200">
+                    Client Email *
+                  </Label>
                   <Input
                     id="clientEmail"
                     type="email"
@@ -569,32 +500,6 @@ export default function InvoiceForm({
                       {errors.clientEmail}
                     </p>
                   )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="clientPhone">Client Phone</Label>
-                  <Input
-                    id="clientPhone"
-                    value={formData.clientPhone}
-                    onChange={(e) =>
-                      handleInputChange("clientPhone", e.target.value)
-                    }
-                    placeholder="+1 (555) 123-4567"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="clientCity" className="dark:text-gray-200">Client City</Label>
-                  <Input
-                    id="clientCity"
-                    value={formData.clientCity}
-                    onChange={(e) =>
-                      handleInputChange("clientCity", e.target.value)
-                    }
-                    placeholder="New York"
-                  />
                 </div>
               </div>
             </div>
@@ -736,11 +641,15 @@ export default function InvoiceForm({
 
             {/* Tax and Discount */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold dark:text-white">Tax & Discount</h3>
+              <h3 className="text-lg font-semibold dark:text-white">
+                Tax & Discount
+              </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="taxRate" className="dark:text-gray-200">Tax Rate (%)</Label>
+                  <Label htmlFor="taxRate" className="dark:text-gray-200">
+                    Tax Rate (%)
+                  </Label>
                   <Input
                     id="taxRate"
                     type="number"
@@ -765,7 +674,9 @@ export default function InvoiceForm({
                 </div>
 
                 <div>
-                  <Label htmlFor="discountRate" className="dark:text-gray-200">Discount Rate (%)</Label>
+                  <Label htmlFor="discountRate" className="dark:text-gray-200">
+                    Discount Rate (%)
+                  </Label>
                   <Input
                     id="discountRate"
                     type="number"
@@ -795,11 +706,15 @@ export default function InvoiceForm({
 
             {/* Payment Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold dark:text-white">Payment Information</h3>
+              <h3 className="text-lg font-semibold dark:text-white">
+                Payment Information
+              </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="bankName" className="dark:text-gray-200">Bank Name</Label>
+                  <Label htmlFor="bankName" className="dark:text-gray-200">
+                    Bank Name
+                  </Label>
                   <Input
                     id="bankName"
                     value={formData.bankName}
@@ -811,7 +726,9 @@ export default function InvoiceForm({
                 </div>
 
                 <div>
-                  <Label htmlFor="bankAccount" className="dark:text-gray-200">Bank Account Number</Label>
+                  <Label htmlFor="bankAccount" className="dark:text-gray-200">
+                    Bank Account Number
+                  </Label>
                   <Input
                     id="bankAccount"
                     value={formData.bankAccount}
@@ -829,7 +746,9 @@ export default function InvoiceForm({
             {/* Additional Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="notes" className="dark:text-gray-200">Notes</Label>
+                <Label htmlFor="notes" className="dark:text-gray-200">
+                  Notes
+                </Label>
                 <textarea
                   id="notes"
                   value={formData.notes}
@@ -840,7 +759,9 @@ export default function InvoiceForm({
               </div>
 
               <div>
-                <Label htmlFor="terms" className="dark:text-gray-200">Terms & Conditions</Label>
+                <Label htmlFor="terms" className="dark:text-gray-200">
+                  Terms & Conditions
+                </Label>
                 <textarea
                   id="terms"
                   value={formData.terms}
@@ -865,16 +786,8 @@ export default function InvoiceForm({
                 <Button type="button" variant="outline" onClick={previewPDF}>
                   Preview PDF
                 </Button>
-                <Button type="button" variant="outline" onClick={downloadPDF}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF
-                </Button>
                 <Button type="submit">
                   {invoice ? "Update Invoice" : "Create Invoice"}
-                </Button>
-                <Button type="button" onClick={createAndDownloadPDF}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Create & Download
                 </Button>
               </div>
             </div>

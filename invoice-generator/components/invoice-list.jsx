@@ -133,7 +133,6 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
         companyLogo: invoiceData.companyLogo || "",
         clientName: invoiceData.clientName || "",
         clientEmail: invoiceData.clientEmail || "",
-        clientPhone: invoiceData.clientPhone || "",
         invoiceNumber: invoiceData.invoiceNumber || "",
         invoiceDate: invoiceData.issueDate || invoiceData.invoiceDate || "",
         dueDate: invoiceData.dueDate || "",

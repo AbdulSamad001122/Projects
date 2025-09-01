@@ -21,7 +21,11 @@ import {
   User,
   Mail,
 } from "lucide-react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import SidebarAwareNavbar from "@/components/SidebarAwareNavbar";
 import InvoiceForm from "@/components/invoice-form";
@@ -111,7 +115,10 @@ export default function ClientDashboard() {
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div
+                    key={i}
+                    className="h-24 bg-gray-200 dark:bg-gray-700 rounded"
+                  ></div>
                 ))}
               </div>
             </div>
@@ -178,7 +185,9 @@ export default function ClientDashboard() {
                 </h1>
                 <div className="flex items-center justify-center space-x-2">
                   <Mail className="h-4 w-4 text-blue-600" />
-                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300">{client?.email}</p>
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
+                    {client?.email}
+                  </p>
                 </div>
               </div>
             </div>
@@ -196,7 +205,7 @@ export default function ClientDashboard() {
             />
           </div>
         </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
+      </SidebarInset>
+    </SidebarProvider>
+  );
 }

@@ -23,7 +23,11 @@ import {
   Calendar,
   FileText,
 } from "lucide-react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import SidebarAwareNavbar from "@/components/SidebarAwareNavbar";
 import {
@@ -158,7 +162,10 @@ export default function Home() {
                   <form onSubmit={handleCreateClient}>
                     <div className="space-y-6 py-6">
                       <div className="space-y-2">
-                        <Label htmlFor="name" className="text-sm font-medium dark:text-gray-200">
+                        <Label
+                          htmlFor="name"
+                          className="text-sm font-medium dark:text-gray-200"
+                        >
                           Client Name *
                         </Label>
                         <Input
@@ -249,7 +256,9 @@ export default function Home() {
                 <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">Organize</div>
+                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                  Organize
+                </div>
                 <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
                   Manage all your clients in one place
                 </p>
@@ -264,7 +273,9 @@ export default function Home() {
                 <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">Create</div>
+                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                  Create
+                </div>
                 <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
                   Generate beautiful, professional invoices
                 </p>
@@ -294,8 +305,8 @@ export default function Home() {
                       Add Your First Client
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">
-                      Click the &quot;Add Client&quot; button to add your first client
-                      with their contact information.
+                      Click the &quot;Add Client&quot; button to add your first
+                      client with their contact information.
                     </p>
                   </div>
                 </div>
