@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -45,9 +45,9 @@ export default function ClientDashboard() {
       setSelectedClientId(clientId);
       fetchClientData();
     }
-  }, [clientId]);
+  }, [clientId, fetchClientData]);
 
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
     try {
       const response = await axios.get(`/api/clients/${clientId}`);
       setClient(response.data);
@@ -56,7 +56,7 @@ export default function ClientDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   const handleClientSelect = (selectedClient) => {
     router.push(`/dashboard/${selectedClient.id}`);

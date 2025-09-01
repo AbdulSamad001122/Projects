@@ -331,7 +331,7 @@ const InvoicePDF = ({ invoiceData }) => {
           </View>
           {companyLogo && (
             <View style={styles.headerCenter}>
-              <Image src={companyLogo} style={styles.companyLogo} />
+              <Image src={companyLogo} style={styles.companyLogo} alt="Company Logo" />
             </View>
           )}
         </View>

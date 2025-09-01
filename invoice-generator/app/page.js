@@ -293,7 +293,7 @@ export default function Home() {
                       Add Your First Client
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">
-                      Click the "Add Client" button to add your first client
+                      Click the &quot;Add Client&quot; button to add your first client
                       with their contact information.
                     </p>
                   </div>
