@@ -40,13 +40,6 @@ export default function ClientDashboard() {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
 
-  useEffect(() => {
-    if (clientId) {
-      setSelectedClientId(clientId);
-      fetchClientData();
-    }
-  }, [clientId, fetchClientData]);
-
   const fetchClientData = useCallback(async () => {
     try {
       const response = await axios.get(`/api/clients/${clientId}`);
@@ -57,6 +50,13 @@ export default function ClientDashboard() {
       setLoading(false);
     }
   }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) {
+      setSelectedClientId(clientId);
+      fetchClientData();
+    }
+  }, [clientId, fetchClientData]);
 
   const handleClientSelect = (selectedClient) => {
     router.push(`/dashboard/${selectedClient.id}`);
