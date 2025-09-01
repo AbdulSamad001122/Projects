@@ -3,11 +3,10 @@
   "installCommand": "npm install",
   "functions": {
     "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
+      "runtime": "nodejs20.x"
     }
   },
   "env": {
     "PRISMA_GENERATE_DATAPROXY": "true"
-  },
-  "outputDirectory": ".next"
+  }
 }
