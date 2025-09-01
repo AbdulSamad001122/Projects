@@ -5,7 +5,16 @@ const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
 ]);
 
+const isPublicRoute = createRouteMatcher([
+  '/signin(.*)',
+  '/signup(.*)',
+]);
+
 export default clerkMiddleware(async (auth, req) => {
+  if (isPublicRoute(req)) {
+    return;
+  }
+  
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
