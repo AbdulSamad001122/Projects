@@ -410,7 +410,7 @@ export default function InvoiceForm({
               </div>
 
               <div>
-                <Label htmlFor="dueDate">Due Date *</Label>
+                <Label htmlFor="dueDate" className="dark:text-gray-200">Due Date *</Label>
                 <Input
                   id="dueDate"
                   type="date"
@@ -419,7 +419,7 @@ export default function InvoiceForm({
                   className={errors.dueDate ? "border-red-500" : ""}
                 />
                 {errors.dueDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.dueDate}</p>
+                  <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.dueDate}</p>
                 )}
               </div>
 
@@ -488,7 +488,7 @@ export default function InvoiceForm({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="companyLogo">Company Logo</Label>
+                  <Label htmlFor="companyLogo" className="dark:text-gray-200">Company Logo</Label>
                   <Input
                     id="companyLogo"
                     type="file"
@@ -553,7 +553,7 @@ export default function InvoiceForm({
                 </div>
 
                 <div>
-                  <Label htmlFor="clientEmail">Client Email *</Label>
+                  <Label htmlFor="clientEmail" className="dark:text-gray-200">Client Email *</Label>
                   <Input
                     id="clientEmail"
                     type="email"
@@ -565,7 +565,7 @@ export default function InvoiceForm({
                     className={errors.clientEmail ? "border-red-500" : ""}
                   />
                   {errors.clientEmail && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="text-red-500 dark:text-red-400 text-sm mt-1">
                       {errors.clientEmail}
                     </p>
                   )}
@@ -586,7 +586,7 @@ export default function InvoiceForm({
                 </div>
 
                 <div>
-                  <Label htmlFor="clientCity">Client City</Label>
+                  <Label htmlFor="clientCity" className="dark:text-gray-200">Client City</Label>
                   <Input
                     id="clientCity"
                     value={formData.clientCity}
@@ -604,7 +604,7 @@ export default function InvoiceForm({
             {/* Items */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Items</h3>
+                <h3 className="text-lg font-semibold dark:text-white">Items</h3>
                 <Button
                   type="button"
                   onClick={addItem}
@@ -671,7 +671,7 @@ export default function InvoiceForm({
                         }
                       />
                       {errors[`item_${index}_quantity`] && (
-                        <p className="text-red-500 text-sm mt-1">
+                        <p className="text-red-500 dark:text-red-400 text-sm mt-1">
                           {errors[`item_${index}_quantity`]}
                         </p>
                       )}
@@ -726,7 +726,7 @@ export default function InvoiceForm({
               </div>
 
               <div className="text-right">
-                <div className="text-xl font-bold">
+                <div className="text-xl font-bold dark:text-white">
                   Total: ${calculateTotal().toFixed(2)}
                 </div>
               </div>
@@ -736,11 +736,11 @@ export default function InvoiceForm({
 
             {/* Tax and Discount */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Tax & Discount</h3>
+              <h3 className="text-lg font-semibold dark:text-white">Tax & Discount</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="taxRate">Tax Rate (%)</Label>
+                  <Label htmlFor="taxRate" className="dark:text-gray-200">Tax Rate (%)</Label>
                   <Input
                     id="taxRate"
                     type="number"
@@ -758,14 +758,14 @@ export default function InvoiceForm({
                     className={errors.taxRate ? "border-red-500" : ""}
                   />
                   {errors.taxRate && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="text-red-500 dark:text-red-400 text-sm mt-1">
                       {errors.taxRate}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="discountRate">Discount Rate (%)</Label>
+                  <Label htmlFor="discountRate" className="dark:text-gray-200">Discount Rate (%)</Label>
                   <Input
                     id="discountRate"
                     type="number"
@@ -783,7 +783,7 @@ export default function InvoiceForm({
                     className={errors.discountRate ? "border-red-500" : ""}
                   />
                   {errors.discountRate && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="text-red-500 dark:text-red-400 text-sm mt-1">
                       {errors.discountRate}
                     </p>
                   )}
@@ -795,11 +795,11 @@ export default function InvoiceForm({
 
             {/* Payment Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Payment Information</h3>
+              <h3 className="text-lg font-semibold dark:text-white">Payment Information</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="bankName">Bank Name</Label>
+                  <Label htmlFor="bankName" className="dark:text-gray-200">Bank Name</Label>
                   <Input
                     id="bankName"
                     value={formData.bankName}
@@ -811,7 +811,7 @@ export default function InvoiceForm({
                 </div>
 
                 <div>
-                  <Label htmlFor="bankAccount">Bank Account Number</Label>
+                  <Label htmlFor="bankAccount" className="dark:text-gray-200">Bank Account Number</Label>
                   <Input
                     id="bankAccount"
                     value={formData.bankAccount}
@@ -829,24 +829,24 @@ export default function InvoiceForm({
             {/* Additional Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes" className="dark:text-gray-200">Notes</Label>
                 <textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => handleInputChange("notes", e.target.value)}
                   placeholder="Additional notes..."
-                  className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 />
               </div>
 
               <div>
-                <Label htmlFor="terms">Terms & Conditions</Label>
+                <Label htmlFor="terms" className="dark:text-gray-200">Terms & Conditions</Label>
                 <textarea
                   id="terms"
                   value={formData.terms}
                   onChange={(e) => handleInputChange("terms", e.target.value)}
                   placeholder="Payment terms and conditions..."
-                  className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 />
               </div>
             </div>

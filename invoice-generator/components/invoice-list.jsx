@@ -19,6 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   FileText,
   Download,
   Edit,
@@ -27,6 +36,7 @@ import {
   DollarSign,
   Search,
   X,
+  CheckCircle,
 } from "lucide-react";
 import axios from "axios";
 import { pdf } from "@react-pdf/renderer";
@@ -40,6 +50,8 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [searchStatus, setSearchStatus] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
 
   useEffect(() => {
     if (clientId) {
@@ -160,13 +172,50 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   };
 
   const handleDeleteInvoice = async (invoiceId) => {
-    if (window.confirm("Are you sure you want to delete this invoice?")) {
+    setInvoiceToDelete(invoiceId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (invoiceToDelete) {
       try {
-        await axios.delete(`/api/invoices?id=${invoiceId}`);
-        setInvoices(invoices.filter((invoice) => invoice.id !== invoiceId));
+        await axios.delete(`/api/invoices?id=${invoiceToDelete}`);
+        setInvoices(
+          invoices.filter((invoice) => invoice.id !== invoiceToDelete)
+        );
+        setDeleteDialogOpen(false);
+        setInvoiceToDelete(null);
       } catch (error) {
         console.error("Error deleting invoice:", error);
+        alert("Error deleting invoice. Please try again.");
       }
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setInvoiceToDelete(null);
+  };
+
+  const handleStatusChange = async (invoiceId, newStatus) => {
+    try {
+      const response = await axios.patch(`/api/invoices?id=${invoiceId}`, {
+        status: newStatus,
+      });
+
+      // Update the local state
+      setInvoices(
+        invoices.map((invoice) =>
+          invoice.id === invoiceId
+            ? { ...invoice, data: { ...invoice.data, status: newStatus } }
+            : invoice
+        )
+      );
+
+      console.log(`Invoice status updated to ${newStatus}`);
+    } catch (error) {
+      console.error("Error updating invoice status:", error);
+      alert("Error updating invoice status. Please try again.");
     }
   };
 
@@ -206,13 +255,15 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     const getStatusColor = (status) => {
       switch (status) {
         case "PAID":
-          return "bg-green-100 text-green-800";
+          return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
         case "PENDING":
-          return "bg-yellow-100 text-yellow-800";
+          return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
         case "CANCELLED":
-          return "bg-red-100 text-red-800";
+          return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+        case "AVAILABLE":
+          return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
         default:
-          return "bg-yellow-100 text-yellow-800";
+          return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       }
     };
 
@@ -229,15 +280,15 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle>Invoices</CardTitle>
-          <CardDescription>Loading invoices...</CardDescription>
+          <CardTitle className="dark:text-white">Invoices</CardTitle>
+          <CardDescription className="dark:text-gray-300">Loading invoices...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+              <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
             ))}
           </div>
         </CardContent>
@@ -247,13 +298,13 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
 
   if (error) {
     return (
-      <Card>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle>Invoices</CardTitle>
-          <CardDescription>Error loading invoices</CardDescription>
+          <CardTitle className="dark:text-white">Invoices</CardTitle>
+          <CardDescription className="dark:text-gray-300">Error loading invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-red-500">{error}</p>
+          <p className="text-red-500 dark:text-red-400">{error}</p>
           <Button onClick={fetchInvoices} className="mt-4">
             Retry
           </Button>
@@ -263,205 +314,254 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <FileText className="h-5 w-5" />
-          <span>Invoices</span>
-        </CardTitle>
-        <CardDescription>
-          {invoices.length === 0
-            ? "No invoices created yet for this client."
-            : `${invoices.length} invoice(s) for this client.`}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {/* Search Section */}
-        {invoices.length > 0 && (
-          <div className="mb-6 space-y-4">
-            <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">
-                Search Invoices
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Search by invoice number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-8"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+    <>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 dark:text-white">
+            <FileText className="h-5 w-5" />
+            <span>Invoices</span>
+          </CardTitle>
+          <CardDescription className="dark:text-gray-300">
+            {invoices.length === 0
+              ? "No invoices created yet for this client."
+              : `${invoices.length} invoice(s) for this client.`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Search Section */}
+          {invoices.length > 0 && (
+            <div className="mb-6 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Search Invoices
+                </span>
               </div>
-              <div className="relative">
-                <Input
-                  type="date"
-                  placeholder="Filter by issue date..."
-                  value={searchDate}
-                  onChange={(e) => setSearchDate(e.target.value)}
-                  className="pr-8"
-                />
-                {searchDate && (
-                  <button
-                    onClick={() => setSearchDate("")}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Search by invoice number..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pr-8"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    placeholder="Filter by issue date..."
+                    value={searchDate}
+                    onChange={(e) => setSearchDate(e.target.value)}
+                    className="pr-8"
+                  />
+                  {searchDate && (
+                    <button
+                      onClick={() => setSearchDate("")}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Select value={searchStatus} onValueChange={setSearchStatus}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filter by status..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PAID">Paid</SelectItem>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {searchStatus && (
+                    <button
+                      onClick={() => setSearchStatus("")}
+                      className="absolute right-8 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {(searchTerm || searchDate || searchStatus) && (
+                  <Button
+                    variant="outline"
+                    onClick={clearSearch}
+                    className="flex items-center space-x-2"
                   >
                     <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <Select value={searchStatus} onValueChange={setSearchStatus}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter by status..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PAID">Paid</SelectItem>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                {searchStatus && (
-                  <button
-                    onClick={() => setSearchStatus("")}
-                    className="absolute right-8 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                    <span>Clear All</span>
+                  </Button>
                 )}
               </div>
               {(searchTerm || searchDate || searchStatus) && (
-                <Button
-                  variant="outline"
-                  onClick={clearSearch}
-                  className="flex items-center space-x-2"
-                >
-                  <X className="h-4 w-4" />
-                  <span>Clear All</span>
-                </Button>
+                <div className="text-sm text-gray-600">
+                  Showing {filteredInvoices.length} of {invoices.length}{" "}
+                  invoices
+                </div>
               )}
             </div>
-            {(searchTerm || searchDate || searchStatus) && (
-              <div className="text-sm text-gray-600">
-                Showing {filteredInvoices.length} of {invoices.length} invoices
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
-        {invoices.length === 0 ? (
-          <div className="text-center py-8">
-            <FileText className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No invoices
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Create your first invoice for this client.
-            </p>
-          </div>
-        ) : filteredInvoices.length === 0 ? (
-          <div className="text-center py-8">
-            <Search className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No invoices found
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Try adjusting your search criteria.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredInvoices.map((invoice) => {
-              const invoiceData = invoice.data || {};
-              return (
-                <div
-                  key={invoice.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <h4 className="font-semibold text-lg">
-                          #{invoiceData.invoiceNumber || "N/A"}
-                        </h4>
-                        {getStatusBadge(invoice)}
+          {invoices.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No invoices
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Create your first invoice for this client.
+              </p>
+            </div>
+          ) : filteredInvoices.length === 0 ? (
+            <div className="text-center py-8">
+              <Search className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No invoices found
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Try adjusting your search criteria.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredInvoices.map((invoice) => {
+                const invoiceData = invoice.data || {};
+                return (
+                  <div
+                    key={invoice.id}
+                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <h4 className="font-semibold text-lg">
+                            #{invoiceData.invoiceNumber || "N/A"}
+                          </h4>
+                          {getStatusBadge(invoice)}
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              Issue:{" "}
+                              {invoiceData.invoiceDate || invoiceData.issueDate
+                                ? formatDate(
+                                    invoiceData.invoiceDate ||
+                                      invoiceData.issueDate
+                                  )
+                                : "N/A"}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              Due:{" "}
+                              {invoiceData.dueDate
+                                ? formatDate(invoiceData.dueDate)
+                                : "N/A"}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <DollarSign className="h-4 w-4" />
+                            <span>
+                              Total:{" "}
+                              {formatCurrency(calculateInvoiceTotal(invoice))}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4" />
+                            <span>Items: {invoiceData.items?.length || 0}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Issue:{" "}
-                            {invoiceData.invoiceDate || invoiceData.issueDate
-                              ? formatDate(
-                                  invoiceData.invoiceDate ||
-                                    invoiceData.issueDate
-                                )
-                              : "N/A"}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Due:{" "}
-                            {invoiceData.dueDate
-                              ? formatDate(invoiceData.dueDate)
-                              : "N/A"}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <DollarSign className="h-4 w-4" />
-                          <span>
-                            Total:{" "}
-                            {formatCurrency(calculateInvoiceTotal(invoice))}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4" />
-                          <span>Items: {invoiceData.items?.length || 0}</span>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadPDF(invoice)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            onEditInvoice && onEditInvoice(invoice)
+                          }
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Select
+                          value={invoiceData.status || "PENDING"}
+                          onValueChange={(newStatus) =>
+                            handleStatusChange(invoice.id, newStatus)
+                          }
+                        >
+                          <SelectTrigger className="w-[120px] h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PENDING">Pending</SelectItem>
+                            <SelectItem value="PAID">Paid</SelectItem>
+                            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteInvoice(invoice.id)}
+                          className="text-red-600 hover:text-red-700 cursor-pointer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadPDF(invoice)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEditInvoice && onEditInvoice(invoice)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteInvoice(invoice.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this invoice? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={cancelDelete}
+              className="cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              className="cursor-pointer hover:bg-red-700 transition-colors duration-200"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

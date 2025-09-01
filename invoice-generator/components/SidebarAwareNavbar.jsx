@@ -4,31 +4,15 @@ import { UserButton, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FileText, Moon, Sun } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 
-export default function Navbar({ className, insideSidebar = false }) {
+export default function SidebarAwareNavbar({ className }) {
   const { isSignedIn, user } = useUser();
   const { theme, toggleTheme } = useTheme();
-  
-  let sidebarAwareClass = "";
-  
-  if (insideSidebar) {
-    try {
-      const { state } = useSidebar();
-      // Adjust navbar width and positioning based on sidebar state
-      sidebarAwareClass = state === "expanded" 
-        ? "ml-64 w-[calc(100%-16rem)] transition-all duration-300 ease-in-out" 
-        : "ml-16 w-[calc(100%-4rem)] transition-all duration-300 ease-in-out";
-    } catch (error) {
-      // Fallback if useSidebar fails
-      sidebarAwareClass = "";
-    }
-  }
 
   return (
-    <nav className={cn("border-b bg-white dark:bg-gray-900 dark:border-gray-700 fixed top-0 z-40", sidebarAwareClass, className)}>
+    <nav className={cn("border-b bg-white dark:bg-gray-900 dark:border-gray-700 sticky top-0 z-40 w-full", className)}>
       <div className="px-4">
         <div className="flex justify-between items-center h-14">
           {/* Logo */}

@@ -102,6 +102,80 @@ export async function PUT(request) {
   }
 }
 
+export async function PATCH(request) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const invoiceId = searchParams.get("id");
+
+    if (!invoiceId) {
+      return NextResponse.json(
+        { error: "Invoice ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const { status } = await request.json();
+
+    if (!status) {
+      return NextResponse.json(
+        { error: "Status is required" },
+        { status: 400 }
+      );
+    }
+
+    // Find the user in database using Clerk ID
+    const user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Get the current invoice to update its data
+    const currentInvoice = await prisma.invoice.findUnique({
+      where: {
+        id: invoiceId,
+        userId: user.id,
+      },
+    });
+
+    if (!currentInvoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    // Update the invoice status in the data field
+    const updatedData = {
+      ...currentInvoice.data,
+      status: status
+    };
+
+    const updatedInvoice = await prisma.invoice.update({
+      where: {
+        id: invoiceId,
+        userId: user.id,
+      },
+      data: {
+        data: updatedData,
+      },
+    });
+
+    return NextResponse.json({ invoice: updatedInvoice });
+  } catch (error) {
+    console.error("Error updating invoice status:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request) {
   try {
     const { userId } = await auth();

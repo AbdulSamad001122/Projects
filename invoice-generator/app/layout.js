@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import Navbar from "@/components/Navbar";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,8 +25,9 @@ export default function RootLayout({ children }) {
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <Navbar />
-          <main className="min-h-screen bg-gray-50">{children}</main>
+          <ThemeProvider>
+            <main className="min-h-screen bg-gray-50 dark:bg-gray-900">{children}</main>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

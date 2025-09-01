@@ -21,8 +21,9 @@ import {
   User,
   Mail,
 } from "lucide-react";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import SidebarAwareNavbar from "@/components/SidebarAwareNavbar";
 import InvoiceForm from "@/components/invoice-form";
 import InvoiceList from "@/components/invoice-list";
 import axios from "axios";
@@ -41,7 +42,7 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     if (clientId) {
-      setSelectedClientId(parseInt(clientId));
+      setSelectedClientId(clientId);
       fetchClientData();
     }
   }, [clientId]);
@@ -82,8 +83,8 @@ export default function ClientDashboard() {
   // Show loading state while Clerk is loading
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 dark:border-gray-100"></div>
       </div>
     );
   }
@@ -103,13 +104,14 @@ export default function ClientDashboard() {
           onAddClient={handleAddClient}
         />
         <SidebarInset>
+          <SidebarAwareNavbar />
           <div className="container mx-auto py-8">
             <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-gray-200 rounded"></div>
+                  <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
                 ))}
               </div>
             </div>
@@ -128,6 +130,7 @@ export default function ClientDashboard() {
           onAddClient={handleAddClient}
         />
         <SidebarInset>
+          <SidebarAwareNavbar />
           <div className="container mx-auto py-8">
             <InvoiceForm
               invoice={editingInvoice}
@@ -152,10 +155,12 @@ export default function ClientDashboard() {
         onAddClient={handleAddClient}
       />
       <SidebarInset>
-        <div className="container mx-auto py-8 space-y-8">
+        <SidebarAwareNavbar />
+        <div className="container mx-auto py-8 pt-20 space-y-8 px-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <SidebarTrigger className="" />
               <Button
                 variant="outline"
                 size="sm"
@@ -165,11 +170,16 @@ export default function ClientDashboard() {
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back to Dashboard</span>
               </Button>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
+            </div>
+            <div className="flex-1 flex justify-center">
+              <div className="space-y-2 text-center">
+                <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
                   {client?.name || "Loading..."}
                 </h1>
-                <p className="text-muted-foreground">{client?.email}</p>
+                <div className="flex items-center justify-center space-x-2">
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300">{client?.email}</p>
+                </div>
               </div>
             </div>
             <Button onClick={() => setShowInvoiceForm(true)}>
@@ -186,7 +196,7 @@ export default function ClientDashboard() {
             />
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
-  );
+        </SidebarInset>
+      </SidebarProvider>
+    );
 }
