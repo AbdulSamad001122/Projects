@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,10 +66,10 @@ export default function Home() {
           </div>
           <div className="mt-8 space-y-4">
             <Button asChild className="w-full">
-              <a href="/signin">Sign In</a>
+              <Link href="/signin">Sign In</Link>
             </Button>
             <Button variant="outline" asChild className="w-full">
-              <a href="/signup">Create Account</a>
+              <Link href="/signup">Create Account</Link>
             </Button>
           </div>
         </div>
