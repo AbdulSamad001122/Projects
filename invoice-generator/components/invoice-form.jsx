@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import LoadingButton from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -19,10 +20,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Package, Check } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
+import { useItems } from "@/contexts/ItemContext";
 import axios from "axios";
 
 export default function InvoiceForm({
@@ -31,6 +41,10 @@ export default function InvoiceForm({
   onCancel,
   preselectedClient,
 }) {
+  const { getItemsForClient } = useItems();
+  const [showSavedItemsDialog, setShowSavedItemsDialog] = useState(false);
+  const [availableItems, setAvailableItems] = useState([]);
+
   const [formData, setFormData] = useState(() => {
     // If editing an invoice, extract data from the data field
     const invoiceData = invoice?.data || {};
@@ -44,14 +58,17 @@ export default function InvoiceForm({
       // Company Information
       companyName: invoiceData?.companyName || "",
       companyEmail: invoiceData?.companyEmail || "",
-
       companyLogo: invoiceData?.companyLogo || "",
+      companyCustomFields: invoiceData?.companyCustomFields || [],
       // Client Information
       clientName: invoiceData?.clientName || "",
       clientEmail: invoiceData?.clientEmail || "",
-
+      clientCustomFields: invoiceData?.clientCustomFields || [],
       // Items and Calculations
-      items: invoiceData?.items || [{ description: "", quantity: 1, rate: 0 }],
+      items: invoiceData?.items || [
+        { itemName: "", description: "", quantity: 1, rate: 0 },
+      ],
+      includeDescription: invoiceData?.includeDescription || false,
       taxRate: invoiceData?.taxRate || 0,
       discountRate: invoiceData?.discountRate || 0,
       // Additional Information
@@ -77,11 +94,16 @@ export default function InvoiceForm({
         companyName: invoiceData?.companyName || "",
         companyEmail: invoiceData?.companyEmail || "",
         companyLogo: invoiceData?.companyLogo || "",
+        companyCustomFields: invoiceData?.companyCustomFields || [],
         // Client Information
         clientName: invoiceData?.clientName || "",
         clientEmail: invoiceData?.clientEmail || "",
+        clientCustomFields: invoiceData?.clientCustomFields || [],
         // Items and Calculations
-        items: invoiceData?.items || [{ description: "", quantity: 1, rate: 0 }],
+        items: invoiceData?.items || [
+          { itemName: "", description: "", quantity: 1, rate: 0 },
+        ],
+        includeDescription: invoiceData?.includeDescription || false,
         taxRate: invoiceData?.taxRate || 0,
         discountRate: invoiceData?.discountRate || 0,
         // Additional Information
@@ -138,6 +160,25 @@ export default function InvoiceForm({
     generateInvoiceNumber();
   }, [preselectedClient, invoice]);
 
+  // Load available items when client changes
+  useEffect(() => {
+    const loadAvailableItems = async () => {
+      if (preselectedClient && preselectedClient.id) {
+        try {
+          const items = await getItemsForClient(preselectedClient.id);
+          setAvailableItems(items);
+        } catch (error) {
+          console.error("Error loading available items:", error);
+          setAvailableItems([]);
+        }
+      } else {
+        setAvailableItems([]);
+      }
+    };
+
+    loadAvailableItems();
+  }, [preselectedClient, getItemsForClient]);
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -188,8 +229,8 @@ export default function InvoiceForm({
       newErrors.items = "At least one item is required";
     } else {
       formData.items.forEach((item, index) => {
-        if (!item.description.trim()) {
-          newErrors[`item_${index}_description`] = "Description is required";
+        if (!item.itemName.trim()) {
+          newErrors[`item_${index}_itemName`] = "Item name is required";
         }
         if (!item.quantity || item.quantity <= 0) {
           newErrors[`item_${index}_quantity`] =
@@ -263,7 +304,10 @@ export default function InvoiceForm({
   const addItem = () => {
     setFormData((prev) => ({
       ...prev,
-      items: [...prev.items, { description: "", quantity: 1, rate: 0 }],
+      items: [
+        ...prev.items,
+        { itemName: "", description: "", quantity: 1, rate: 0 },
+      ],
     }));
   };
 
@@ -274,34 +318,93 @@ export default function InvoiceForm({
     }
   };
 
+  const addSavedItem = (savedItem) => {
+    const newItem = {
+      itemName: savedItem.name,
+      description: savedItem.description || "",
+      quantity: 1,
+      rate: Number(savedItem.price),
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      items: [...prev.items, newItem],
+    }));
+  };
+
+  const handleSavedItemSelect = (savedItem) => {
+    addSavedItem(savedItem);
+    setShowSavedItemsDialog(false);
+  };
+
+  // Custom field management functions
+  const addCustomField = (fieldType) => {
+    const fieldKey = `${fieldType}CustomFields`;
+    setFormData((prev) => {
+      // Limit custom fields to prevent memory issues (max 20 fields per type)
+      if (prev[fieldKey].length >= 20) {
+        alert(`Maximum of 20 custom fields allowed for ${fieldType} information.`);
+        return prev;
+      }
+      return {
+        ...prev,
+        [fieldKey]: [...prev[fieldKey], { name: "", value: "" }],
+      };
+    });
+  };
+
+  const removeCustomField = (fieldType, index) => {
+    const fieldKey = `${fieldType}CustomFields`;
+    setFormData((prev) => ({
+      ...prev,
+      [fieldKey]: prev[fieldKey].filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleCustomFieldChange = (fieldType, index, field, value) => {
+    const fieldKey = `${fieldType}CustomFields`;
+    
+    // Limit field value length to prevent memory issues (max 500 characters)
+    if (value.length > 500) {
+      alert(`Custom field ${field} cannot exceed 500 characters.`);
+      return;
+    }
+    
+    setFormData((prev) => {
+      const newFields = [...prev[fieldKey]];
+      newFields[index] = { ...newFields[index], [field]: value };
+      return { ...prev, [fieldKey]: newFields };
+    });
+  };
+
   const calculateTotal = () => {
     return formData.items.reduce((total, item) => {
       return total + item.quantity * item.rate;
     }, 0);
   };
 
-
-
-
-
   const generateInvoiceData = () => {
     return {
       companyName: formData.companyName,
       companyEmail: formData.companyEmail,
       companyLogo: formData.companyLogo,
+      companyCustomFields: formData.companyCustomFields,
       clientName: formData.clientName,
       clientEmail: formData.clientEmail,
+      clientCustomFields: formData.clientCustomFields,
       invoiceNumber: formData.invoiceNumber,
       invoiceDate: formData.issueDate,
       dueDate: formData.dueDate,
       status: formData.status,
       showStatusOnPDF: showStatusOnPDF,
       items: formData.items.map((item) => ({
+        itemName: item.itemName,
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
         amount: item.quantity * item.rate,
       })),
+      includeDescription: formData.includeDescription,
       taxRate: formData.taxRate,
       discountRate: formData.discountRate,
       notes: formData.notes || "Thank you for your business!",
@@ -320,7 +423,22 @@ export default function InvoiceForm({
       const invoiceData = generateInvoiceData();
       const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      const newWindow = window.open(url, "_blank");
+      
+      // Clean up the URL after a delay to prevent memory leaks
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+      
+      // Also clean up if the window is closed
+      if (newWindow) {
+        const checkClosed = setInterval(() => {
+          if (newWindow.closed) {
+            URL.revokeObjectURL(url);
+            clearInterval(checkClosed);
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error("Error generating PDF preview:", error);
       alert("Error generating PDF preview. Please try again.");
@@ -336,9 +454,9 @@ export default function InvoiceForm({
       const invoiceData = generateInvoiceData();
       const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `${invoiceData.invoiceNumber || 'invoice'}.pdf`;
+      link.download = `${invoiceData.invoiceNumber || "invoice"}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -363,7 +481,10 @@ export default function InvoiceForm({
 
       let response;
       if (invoice && invoice.id) {
-        response = await axios.put(`/api/invoices?id=${invoice.id}`, invoicePayload);
+        response = await axios.put(
+          `/api/invoices?id=${invoice.id}`,
+          invoicePayload
+        );
       } else {
         response = await axios.post("/api/createInvoice", invoicePayload);
       }
@@ -372,9 +493,9 @@ export default function InvoiceForm({
       const invoiceData = generateInvoiceData();
       const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `${invoiceData.invoiceNumber || 'invoice'}.pdf`;
+      link.download = `${invoiceData.invoiceNumber || "invoice"}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -408,12 +529,20 @@ export default function InvoiceForm({
                 <Label htmlFor="invoiceNumber">Invoice Number *</Label>
                 <Input
                   id="invoiceNumber"
-                  value={isLoadingAutoData ? "Generating..." : formData.invoiceNumber}
+                  value={
+                    isLoadingAutoData ? "Generating..." : formData.invoiceNumber
+                  }
                   onChange={(e) =>
                     handleInputChange("invoiceNumber", e.target.value)
                   }
-                  placeholder={isLoadingAutoData ? "Generating invoice number..." : "INV-001"}
-                  className={`${errors.invoiceNumber ? "border-red-500" : ""} ${isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""}`}
+                  placeholder={
+                    isLoadingAutoData
+                      ? "Generating invoice number..."
+                      : "INV-001"
+                  }
+                  className={`${errors.invoiceNumber ? "border-red-500" : ""} ${
+                    isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""
+                  }`}
                   disabled={isLoadingAutoData}
                   readOnly={isLoadingAutoData}
                 />
@@ -570,6 +699,59 @@ export default function InvoiceForm({
                   )}
                 </div>
               </div>
+
+              {/* Company Custom Fields */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Additional Company Information</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addCustomField("company")}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Field
+                  </Button>
+                </div>
+                {formData.companyCustomFields.map((field, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                    <div>
+                      <Label htmlFor={`companyField${index}Name`}>Field Name</Label>
+                      <Input
+                        id={`companyField${index}Name`}
+                        value={field.name}
+                        onChange={(e) =>
+                          handleCustomFieldChange("company", index, "name", e.target.value)
+                        }
+                        placeholder="e.g., Phone, Address, Website"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`companyField${index}Value`}>Field Value</Label>
+                      <Input
+                        id={`companyField${index}Value`}
+                        value={field.value}
+                        onChange={(e) =>
+                          handleCustomFieldChange("company", index, "value", e.target.value)
+                        }
+                        placeholder="Enter value"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeCustomField("company", index)}
+                      className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <Separator />
@@ -583,12 +765,20 @@ export default function InvoiceForm({
                   <Label htmlFor="clientName">Client Name *</Label>
                   <Input
                     id="clientName"
-                    value={isLoadingAutoData ? "Fetching client info..." : formData.clientName}
+                    value={
+                      isLoadingAutoData
+                        ? "Fetching client info..."
+                        : formData.clientName
+                    }
                     onChange={(e) =>
                       handleInputChange("clientName", e.target.value)
                     }
-                    placeholder={isLoadingAutoData ? "Loading client name..." : "John Doe"}
-                    className={`${errors.clientName ? "border-red-500" : ""} ${isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""}`}
+                    placeholder={
+                      isLoadingAutoData ? "Loading client name..." : "John Doe"
+                    }
+                    className={`${errors.clientName ? "border-red-500" : ""} ${
+                      isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""
+                    }`}
                     disabled={isLoadingAutoData}
                     readOnly={isLoadingAutoData}
                   />
@@ -606,12 +796,22 @@ export default function InvoiceForm({
                   <Input
                     id="clientEmail"
                     type="email"
-                    value={isLoadingAutoData ? "Fetching client email..." : formData.clientEmail}
+                    value={
+                      isLoadingAutoData
+                        ? "Fetching client email..."
+                        : formData.clientEmail
+                    }
                     onChange={(e) =>
                       handleInputChange("clientEmail", e.target.value)
                     }
-                    placeholder={isLoadingAutoData ? "Loading client email..." : "john@example.com"}
-                    className={`${errors.clientEmail ? "border-red-500" : ""} ${isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""}`}
+                    placeholder={
+                      isLoadingAutoData
+                        ? "Loading client email..."
+                        : "john@example.com"
+                    }
+                    className={`${errors.clientEmail ? "border-red-500" : ""} ${
+                      isLoadingAutoData ? "bg-gray-100 text-gray-500" : ""
+                    }`}
                     disabled={isLoadingAutoData}
                     readOnly={isLoadingAutoData}
                   />
@@ -622,6 +822,59 @@ export default function InvoiceForm({
                   )}
                 </div>
               </div>
+
+              {/* Client Custom Fields */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Additional Client Information</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addCustomField("client")}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Field
+                  </Button>
+                </div>
+                {formData.clientCustomFields.map((field, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                    <div>
+                      <Label htmlFor={`clientField${index}Name`}>Field Name</Label>
+                      <Input
+                        id={`clientField${index}Name`}
+                        value={field.name}
+                        onChange={(e) =>
+                          handleCustomFieldChange("client", index, "name", e.target.value)
+                        }
+                        placeholder="e.g., Phone, Address, Tax ID"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`clientField${index}Value`}>Field Value</Label>
+                      <Input
+                        id={`clientField${index}Value`}
+                        value={field.value}
+                        onChange={(e) =>
+                          handleCustomFieldChange("client", index, "value", e.target.value)
+                        }
+                        placeholder="Enter value"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeCustomField("client", index)}
+                      className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <Separator />
@@ -630,15 +883,86 @@ export default function InvoiceForm({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold dark:text-white">Items</h3>
-                <Button
-                  type="button"
-                  onClick={addItem}
-                  variant="outline"
-                  size="sm"
+                <div className="flex gap-2">
+                  {availableItems.length > 0 && (
+                    <Dialog
+                      open={showSavedItemsDialog}
+                      onOpenChange={setShowSavedItemsDialog}
+                    >
+                      <DialogTrigger asChild>
+                        <Button type="button" variant="outline" size="sm">
+                          <Package className="w-4 h-4 mr-2" />
+                          Saved Items
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Select Saved Items</DialogTitle>
+                          <DialogDescription>
+                            Choose from your saved items to add to this invoice.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="max-h-96 overflow-y-auto space-y-2">
+                          {availableItems.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                              onClick={() => handleSavedItemSelect(item)}
+                            >
+                              <div className="flex-1">
+                                <h4 className="font-medium">{item.name}</h4>
+                                {item.description && (
+                                  <p className="text-sm text-gray-600">
+                                    {item.description}
+                                  </p>
+                                )}
+                                <p className="text-sm font-semibold text-green-600">
+                                  ${Number(item.price).toFixed(2)}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSavedItemSelect(item);
+                                }}
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  <Button
+                    type="button"
+                    onClick={addItem}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Item
+                  </Button>
+                </div>
+              </div>
+
+              {/* Include Description Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="includeDescription"
+                  checked={formData.includeDescription}
+                  onCheckedChange={(checked) =>
+                    handleInputChange("includeDescription", checked)
+                  }
+                />
+                <Label
+                  htmlFor="includeDescription"
+                  className="text-sm font-medium"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Item
-                </Button>
+                  Include description field for items
+                </Label>
               </div>
 
               {errors.items && (
@@ -651,29 +975,63 @@ export default function InvoiceForm({
                     key={index}
                     className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end"
                   >
-                    <div className="md:col-span-5">
-                      <Label htmlFor={`description-${index}`}>
-                        Description
-                      </Label>
+                    <div
+                      className={
+                        formData.includeDescription
+                          ? "md:col-span-3"
+                          : "md:col-span-5"
+                      }
+                    >
+                      <Label htmlFor={`itemName-${index}`}>Item Name</Label>
                       <Input
-                        id={`description-${index}`}
-                        value={item.description}
+                        id={`itemName-${index}`}
+                        value={item.itemName}
                         onChange={(e) =>
-                          handleItemChange(index, "description", e.target.value)
+                          handleItemChange(index, "itemName", e.target.value)
                         }
-                        placeholder="Item description"
+                        placeholder="Item name"
                         className={
-                          errors[`item_${index}_description`]
+                          errors[`item_${index}_itemName`]
                             ? "border-red-500"
                             : ""
                         }
                       />
-                      {errors[`item_${index}_description`] && (
+                      {errors[`item_${index}_itemName`] && (
                         <p className="text-red-500 text-sm mt-1">
-                          {errors[`item_${index}_description`]}
+                          {errors[`item_${index}_itemName`]}
                         </p>
                       )}
                     </div>
+
+                    {formData.includeDescription && (
+                      <div className="md:col-span-2">
+                        <Label htmlFor={`description-${index}`}>
+                          Description
+                        </Label>
+                        <Input
+                          id={`description-${index}`}
+                          value={item.description}
+                          onChange={(e) =>
+                            handleItemChange(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Item description"
+                          className={
+                            errors[`item_${index}_description`]
+                              ? "border-red-500"
+                              : ""
+                          }
+                        />
+                        {errors[`item_${index}_description`] && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors[`item_${index}_description`]}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="md:col-span-2">
                       <Label htmlFor={`quantity-${index}`}>Quantity</Label>
@@ -893,31 +1251,48 @@ export default function InvoiceForm({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-between pt-6">
-              <div className="space-x-2">
-                {onCancel && (
-                  <Button type="button" variant="outline" onClick={onCancel}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-
-              <div className="space-x-2">
-                <Button type="button" variant="outline" onClick={previewPDF}>
-                  Preview PDF
+            <div className="flex flex-wrap gap-2 justify-center pt-6">
+              {onCancel && (
+                <Button type="button" variant="outline" onClick={onCancel}>
+                  Cancel
                 </Button>
-                <Button type="button" variant="outline" onClick={downloadPDF}>
-                  Download Only
-                </Button>
-                {!invoice && (
-                  <Button type="button" onClick={handleCreateAndDownload}>
-                    Create & Download
-                  </Button>
-                )}
-                <Button type="submit">
-                  {invoice ? "Update Invoice" : "Create Invoice"}
-                </Button>
-              </div>
+              )}
+              <LoadingButton
+                type="button"
+                variant="outline"
+                onClick={previewPDF}
+                errorMessage="Failed to generate PDF preview. Please check your data and try again."
+              >
+                Preview PDF
+              </LoadingButton>
+              <LoadingButton
+                type="button"
+                variant="outline"
+                onClick={downloadPDF}
+                errorMessage="Failed to download PDF. Please check your data and try again."
+              >
+                Download Only
+              </LoadingButton>
+              {!invoice && (
+                <LoadingButton
+                  type="button"
+                  onClick={handleCreateAndDownload}
+                  errorMessage="Failed to create and download invoice. Please check your data and try again."
+                >
+                  Create & Download
+                </LoadingButton>
+              )}
+              <LoadingButton
+                type="submit"
+                onClick={handleSubmit}
+                errorMessage={
+                  invoice
+                    ? "Failed to update invoice. Please check your data and try again."
+                    : "Failed to create invoice. Please check your data and try again."
+                }
+              >
+                {invoice ? "Update Invoice" : "Create Invoice"}
+              </LoadingButton>
             </div>
           </form>
         </CardContent>

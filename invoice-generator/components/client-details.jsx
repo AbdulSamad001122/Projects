@@ -9,16 +9,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import LoadingButton from "@/components/ui/loading-button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FileText, Download, Calendar, DollarSign } from "lucide-react";
 import { useInvoices } from "@/contexts/InvoiceContext";
 
 export function ClientDetails({ client, onCreateInvoice }) {
-  const {
-    getInvoicesForClient,
-    loading,
-    fetchInvoices
-  } = useInvoices();
+  const { getInvoicesForClient, loading, fetchInvoices } = useInvoices();
 
   // Get invoices from context
   const invoices = client ? getInvoicesForClient(client.id) : [];
@@ -81,13 +78,21 @@ export function ClientDetails({ client, onCreateInvoice }) {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold dark:text-white">{client.name}</h1>
-            <p className="text-muted-foreground dark:text-gray-400">{client.email}</p>
+            <h1 className="text-3xl font-bold dark:text-white">
+              {client.name}
+            </h1>
+            <p className="text-muted-foreground dark:text-gray-400">
+              {client.email}
+            </p>
           </div>
-          <Button onClick={() => onCreateInvoice(client)} className="gap-2">
+          <LoadingButton
+            onClick={() => onCreateInvoice(client)}
+            className="gap-2"
+            errorMessage="Failed to create invoice. Please try again."
+          >
             <Plus className="h-4 w-4" />
             Create Invoice
-          </Button>
+          </LoadingButton>
         </div>
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -103,13 +108,17 @@ export function ClientDetails({ client, onCreateInvoice }) {
                 <p className="text-sm font-medium text-muted-foreground dark:text-gray-400">
                   Phone
                 </p>
-                <p className="text-sm dark:text-gray-200">{client.phone || "Not provided"}</p>
+                <p className="text-sm dark:text-gray-200">
+                  {client.phone || "Not provided"}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground dark:text-gray-400">
                   Address
                 </p>
-                <p className="text-sm dark:text-gray-200">{client.address || "Not provided"}</p>
+                <p className="text-sm dark:text-gray-200">
+                  {client.address || "Not provided"}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -127,7 +136,9 @@ export function ClientDetails({ client, onCreateInvoice }) {
 
         {isLoading ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground dark:text-gray-400">Loading invoices...</p>
+            <p className="text-muted-foreground dark:text-gray-400">
+              Loading invoices...
+            </p>
           </div>
         ) : invoices.length === 0 ? (
           <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -209,7 +220,9 @@ export function ClientDetails({ client, onCreateInvoice }) {
                   {invoiceData?.items && invoiceData.items.length > 0 && (
                     <CardContent>
                       <div className="text-sm text-muted-foreground dark:text-gray-400">
-                        <p className="font-medium mb-1 dark:text-gray-300">Items:</p>
+                        <p className="font-medium mb-1 dark:text-gray-300">
+                          Items:
+                        </p>
                         <ul className="list-disc list-inside space-y-1">
                           {invoiceData.items.slice(0, 3).map((item, index) => (
                             <li key={index}>

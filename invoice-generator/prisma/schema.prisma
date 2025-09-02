@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,54 +8,95 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique @map("clerk_id")
-  name      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  clients  Client[]
-  invoices Invoice[]
+  id               String            @id @default(cuid())
+  clerkId          String            @unique @map("clerk_id")
+  name             String
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  clients          Client[]
+  invoices         Invoice[]
+  items            Item[]
+  invoiceTemplates InvoiceTemplate[]
 
   @@map("users")
 }
 
 model Client {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  userClerkId String?  @map("user_clerk_id")
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
   name        String
   email       String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoices Invoice[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  userClerkId String?      @map("user_clerk_id")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices    Invoice[]
+  itemClients ItemClient[]
 
   @@unique([userId, email])
-  // Indexes
   @@index([userId])
   @@map("clients")
 }
 
 model Invoice {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  clientId  String   @map("client_id")
-  data      Json // Complete invoice JSON from frontend
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String           @id @default(cuid())
+  userId     String           @map("user_id")
+  clientId   String           @map("client_id")
+  data       Json
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+  templateId String?          @map("template_id")
+  client     Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  template   InvoiceTemplate? @relation(fields: [templateId], references: [id])
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relations
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  // Indexes
   @@index([userId])
   @@index([clientId])
-  @@index([userId, clientId])
-  @@index([clientId, createdAt(sort: Desc)]) // Optimize invoice listing by client with date sorting
   @@map("invoices")
+}
+
+model InvoiceTemplate {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  name      String
+  category  String
+  isActive  Boolean   @default(true)
+  isDefault Boolean   @default(false)
+  preview   String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
+
+  @@index([userId])
+  @@map("invoice_templates")
+}
+
+model Item {
+  id              String       @id @default(cuid())
+  userId          String       @map("user_id")
+  name            String
+  price           Decimal      @db.Decimal(10, 2)
+  description     String?
+  isForAllClients Boolean      @default(false) @map("is_for_all_clients")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemClients     ItemClient[]
+
+  @@index([userId])
+  @@map("items")
+}
+
+model ItemClient {
+  id       String @id @default(cuid())
+  itemId   String @map("item_id")
+  clientId String @map("client_id")
+  item     Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, clientId])
+  @@index([itemId])
+  @@index([clientId])
+  @@map("item_clients")
 }

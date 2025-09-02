@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import LoadingButton from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -168,9 +169,13 @@ export function ClientForm({ onClose, onClientAdded }) {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={loading}>
-                {loading ? "Creating..." : "Create Client"}
-              </Button>
+              <LoadingButton
+                type="submit"
+                className="flex-1"
+                errorMessage="Failed to create client. Please check your data and try again."
+              >
+                Create Client
+              </LoadingButton>
             </div>
           </form>
         </CardContent>

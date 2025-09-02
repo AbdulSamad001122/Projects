@@ -23,6 +23,35 @@ export function InvoiceProvider({ children }) {
 
   // Cache duration: 2 minutes for invoices (shorter than clients as they change more frequently)
   const CACHE_DURATION = 2 * 60 * 1000;
+  const MAX_CACHED_CLIENTS = 50; // Limit number of cached client invoice lists
+
+  // Cleanup old cache entries to prevent memory buildup
+  const cleanupCache = useCallback(() => {
+    setInvoicesByClient(prev => {
+      const clientIds = Object.keys(prev);
+      if (clientIds.length <= MAX_CACHED_CLIENTS) return prev;
+      
+      // Sort by last fetch time and keep only the most recent entries
+      const sortedIds = clientIds.sort((a, b) => (lastFetch[b] || 0) - (lastFetch[a] || 0));
+      const idsToKeep = sortedIds.slice(0, MAX_CACHED_CLIENTS);
+      
+      const cleaned = {};
+      idsToKeep.forEach(id => {
+        cleaned[id] = prev[id];
+      });
+      return cleaned;
+    });
+    
+    setLastFetch(prev => {
+      const cleaned = {};
+      Object.keys(prev).forEach(id => {
+        if (Object.keys(invoicesByClient).includes(id)) {
+          cleaned[id] = prev[id];
+        }
+      });
+      return cleaned;
+    });
+  }, [lastFetch, invoicesByClient]);
 
   const fetchInvoices = useCallback(async (clientId, force = false) => {
     // Skip if not authenticated or still loading
@@ -52,6 +81,9 @@ export function InvoiceProvider({ children }) {
         ...prev,
         [clientId]: Date.now()
       }));
+      
+      // Cleanup cache if needed
+      setTimeout(cleanupCache, 0);
     } catch (err) {
       console.error('Error fetching invoices:', err);
       setError(prev => ({

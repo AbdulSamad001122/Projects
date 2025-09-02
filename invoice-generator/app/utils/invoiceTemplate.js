@@ -153,18 +153,36 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
+  itemNameHeader: {
+    width: "25%",
+    textAlign: "left",
+  },
+  itemNameHeaderWide: {
+    width: "50%",
+    textAlign: "left",
+  },
   descriptionHeader: {
-    width: "40%",
+    width: "25%",
     textAlign: "left",
   },
   qtyHeader: {
     width: "15%",
   },
+  qtyHeaderWide: {
+    width: "16.67%",
+  },
   priceHeader: {
-    width: "20%",
+    width: "17.5%",
+  },
+  priceHeaderWide: {
+    width: "16.67%",
   },
   totalHeader: {
-    width: "25%",
+    width: "17.5%",
+    textAlign: "right",
+  },
+  totalHeaderWide: {
+    width: "16.66%",
     textAlign: "right",
   },
   tableRow: {
@@ -179,18 +197,36 @@ const styles = StyleSheet.create({
     color: "#374151",
     textAlign: "center",
   },
+  itemNameCell: {
+    width: "25%",
+    textAlign: "left",
+  },
+  itemNameCellWide: {
+    width: "50%",
+    textAlign: "left",
+  },
   descriptionCell: {
-    width: "40%",
+    width: "25%",
     textAlign: "left",
   },
   qtyCell: {
     width: "15%",
   },
+  qtyCellWide: {
+    width: "16.67%",
+  },
   priceCell: {
-    width: "20%",
+    width: "17.5%",
+  },
+  priceCellWide: {
+    width: "16.67%",
   },
   totalCell: {
-    width: "25%",
+    width: "17.5%",
+    textAlign: "right",
+  },
+  totalCellWide: {
+    width: "16.66%",
     textAlign: "right",
   },
   // Totals section
@@ -312,8 +348,10 @@ const InvoicePDF = ({ invoiceData }) => {
     companyName,
     companyEmail,
     companyLogo,
+    companyCustomFields = [],
     clientName,
     clientEmail,
+    clientCustomFields = [],
     invoiceNumber,
     invoiceDate,
     dueDate,
@@ -377,6 +415,13 @@ const InvoicePDF = ({ invoiceData }) => {
             <Text style={styles.text}>
               {clientEmail || "client@example.com"}
             </Text>
+            {clientCustomFields.slice(0, 10).map((field, index) => (
+              field.name && field.value && (
+                <Text key={index} style={styles.text}>
+                  {field.name.substring(0, 50)}: {field.value.substring(0, 100)}
+                </Text>
+              )
+            ))}
           </View>
           <View style={styles.fromSection}>
             <Text style={styles.sectionTitle}>From:</Text>
@@ -384,6 +429,13 @@ const InvoicePDF = ({ invoiceData }) => {
             <Text style={styles.text}>
               {companyEmail || "company@example.com"}
             </Text>
+            {companyCustomFields.slice(0, 10).map((field, index) => (
+              field.name && field.value && (
+                <Text key={index} style={styles.text}>
+                  {field.name.substring(0, 50)}: {field.value.substring(0, 100)}
+                </Text>
+              )
+            ))}
           </View>
         </View>
 
@@ -405,14 +457,49 @@ const InvoicePDF = ({ invoiceData }) => {
         <View style={styles.table}>
           {/* Table Header */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, styles.descriptionHeader]}>
-              Description
+            <Text
+              style={[
+                styles.tableHeaderCell,
+                invoiceData.includeDescription
+                  ? styles.itemNameHeader
+                  : styles.itemNameHeaderWide,
+              ]}
+            >
+              Item Name
             </Text>
-            <Text style={[styles.tableHeaderCell, styles.qtyHeader]}>Qty</Text>
-            <Text style={[styles.tableHeaderCell, styles.priceHeader]}>
+            {invoiceData.includeDescription && (
+              <Text style={[styles.tableHeaderCell, styles.descriptionHeader]}>
+                Description
+              </Text>
+            )}
+            <Text
+              style={[
+                styles.tableHeaderCell,
+                invoiceData.includeDescription
+                  ? styles.qtyHeader
+                  : styles.qtyHeaderWide,
+              ]}
+            >
+              Qty
+            </Text>
+            <Text
+              style={[
+                styles.tableHeaderCell,
+                invoiceData.includeDescription
+                  ? styles.priceHeader
+                  : styles.priceHeaderWide,
+              ]}
+            >
               Price
             </Text>
-            <Text style={[styles.tableHeaderCell, styles.totalHeader]}>
+            <Text
+              style={[
+                styles.tableHeaderCell,
+                invoiceData.includeDescription
+                  ? styles.totalHeader
+                  : styles.totalHeaderWide,
+              ]}
+            >
               Total
             </Text>
           </View>
@@ -421,16 +508,49 @@ const InvoicePDF = ({ invoiceData }) => {
           {items && items.length > 0
             ? items.map((item, index) => (
                 <View style={styles.tableRow} key={index}>
-                  <Text style={[styles.tableCell, styles.descriptionCell]}>
-                    {item.description || "Your Description"}
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.itemNameCell
+                        : styles.itemNameCellWide,
+                    ]}
+                  >
+                    {item.itemName || "Your Item Name"}
                   </Text>
-                  <Text style={[styles.tableCell, styles.qtyCell]}>
+                  {invoiceData.includeDescription && (
+                    <Text style={[styles.tableCell, styles.descriptionCell]}>
+                      {item.description || ""}
+                    </Text>
+                  )}
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.qtyCell
+                        : styles.qtyCellWide,
+                    ]}
+                  >
                     {item.quantity || 1}
                   </Text>
-                  <Text style={[styles.tableCell, styles.priceCell]}>
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.priceCell
+                        : styles.priceCellWide,
+                    ]}
+                  >
                     $ {(item.rate || 0).toFixed(2)}
                   </Text>
-                  <Text style={[styles.tableCell, styles.totalCell]}>
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.totalCell
+                        : styles.totalCellWide,
+                    ]}
+                  >
                     $ {(item.amount || 0).toFixed(2)}
                   </Text>
                 </View>
@@ -438,14 +558,49 @@ const InvoicePDF = ({ invoiceData }) => {
             : // Default rows if no items
               Array.from({ length: 6 }, (_, index) => (
                 <View style={styles.tableRow} key={index}>
-                  <Text style={[styles.tableCell, styles.descriptionCell]}>
-                    Your Description
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.itemNameCell
+                        : styles.itemNameCellWide,
+                    ]}
+                  >
+                    Your Item Name
                   </Text>
-                  <Text style={[styles.tableCell, styles.qtyCell]}>1</Text>
-                  <Text style={[styles.tableCell, styles.priceCell]}>
+                  {invoiceData.includeDescription && (
+                    <Text
+                      style={[styles.tableCell, styles.descriptionCell]}
+                    ></Text>
+                  )}
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.qtyCell
+                        : styles.qtyCellWide,
+                    ]}
+                  >
+                    1
+                  </Text>
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.priceCell
+                        : styles.priceCellWide,
+                    ]}
+                  >
                     $ 0.00
                   </Text>
-                  <Text style={[styles.tableCell, styles.totalCell]}>
+                  <Text
+                    style={[
+                      styles.tableCell,
+                      invoiceData.includeDescription
+                        ? styles.totalCell
+                        : styles.totalCellWide,
+                    ]}
+                  >
                     $ 0.00
                   </Text>
                 </View>

@@ -103,7 +103,7 @@ export async function PUT(request) {
     const dbUser = await getCachedUser(userId);
 
     const body = await request.json();
-    const { id, name, email } = body;
+    const { id, name, email, updateOption } = body;
 
     // Validate required fields
     if (!id || !name || name.trim() === "") {
@@ -132,6 +132,36 @@ export async function PUT(request) {
         email: email?.trim() || null,
       },
     });
+
+    // If updateOption is 'allInvoices', update all invoices with new client data
+    if (updateOption === "allInvoices") {
+      // Get all invoices for this client
+      const invoices = await prisma.invoice.findMany({
+        where: {
+          clientId: id,
+          userId: dbUser.id,
+        },
+      });
+
+      // Update each invoice's data with new client information
+      for (const invoice of invoices) {
+        const invoiceData = invoice.data;
+
+        // Update client information in invoice data
+        if (invoiceData && typeof invoiceData === "object") {
+          const updatedInvoiceData = {
+            ...invoiceData,
+            clientName: name.trim(),
+            clientEmail: email?.trim() || null,
+          };
+
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: { data: updatedInvoiceData },
+          });
+        }
+      }
+    }
 
     return NextResponse.json(updatedClient);
   } catch (error) {
@@ -168,9 +198,9 @@ export async function DELETE(request) {
     // Delete client from database with ownership verification
     try {
       await prisma.client.delete({
-        where: { 
+        where: {
           id,
-          userId: dbUser.id // Ensure user owns the client
+          userId: dbUser.id, // Ensure user owns the client
         },
       });
 
@@ -179,8 +209,11 @@ export async function DELETE(request) {
         { status: 200 }
       );
     } catch (deleteError) {
-      if (deleteError.code === 'P2025') {
-        return NextResponse.json({ error: "Client not found" }, { status: 404 });
+      if (deleteError.code === "P2025") {
+        return NextResponse.json(
+          { error: "Client not found" },
+          { status: 404 }
+        );
       }
       throw deleteError;
     }

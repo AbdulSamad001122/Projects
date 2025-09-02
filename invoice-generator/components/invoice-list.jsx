@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import LoadingButton from "@/components/ui/loading-button";
 import {
   Card,
   CardContent,
@@ -49,10 +50,9 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     error,
     fetchInvoices,
     deleteInvoice,
-    updateInvoiceStatus
+    updateInvoiceStatus,
   } = useInvoices();
-  
-  const [filteredInvoices, setFilteredInvoices] = useState([]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [searchStatus, setSearchStatus] = useState("");
@@ -60,7 +60,8 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
 
   // Get invoices from context
-  const invoices = getInvoicesForClient(clientId);
+  const rawInvoices = getInvoicesForClient(clientId);
+  const invoices = useMemo(() => rawInvoices, [rawInvoices]);
   const isLoading = loading[clientId] || false;
   const fetchError = error[clientId] || null;
 
@@ -68,11 +69,11 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     if (clientId) {
       fetchInvoices(clientId);
     }
-  }, [clientId]);
+  }, [clientId, fetchInvoices]);
 
-  // Filter invoices based on search criteria
-  useEffect(() => {
-    let filtered = invoices;
+  // Filter invoices based on search criteria using useMemo to prevent infinite loops
+  const filteredInvoices = useMemo(() => {
+    let filtered = [...invoices]; // Create a shallow copy to avoid mutation
 
     // Filter by invoice number/name
     if (searchTerm) {
@@ -105,7 +106,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
       });
     }
 
-    setFilteredInvoices(filtered);
+    return filtered;
   }, [invoices, searchTerm, searchDate, searchStatus]);
 
   const clearSearch = () => {
@@ -123,19 +124,23 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
         companyName: invoiceData.companyName || "",
         companyEmail: invoiceData.companyEmail || "",
         companyLogo: invoiceData.companyLogo || "",
+        companyCustomFields: invoiceData.companyCustomFields || [],
         clientName: invoiceData.clientName || "",
         clientEmail: invoiceData.clientEmail || "",
+        clientCustomFields: invoiceData.clientCustomFields || [],
         invoiceNumber: invoiceData.invoiceNumber || "",
         invoiceDate: invoiceData.issueDate || invoiceData.invoiceDate || "",
         dueDate: invoiceData.dueDate || "",
         status: invoiceData.status || "PENDING",
         items:
           invoiceData.items?.map((item) => ({
+            itemName: item.itemName || "",
             description: item.description || "",
             quantity: item.quantity || 0,
             rate: item.rate || 0,
             amount: (item.quantity || 0) * (item.rate || 0),
           })) || [],
+        includeDescription: invoiceData.includeDescription || false,
         taxRate: invoiceData.taxRate || 0,
         discountRate: invoiceData.discountRate || 0,
         notes: invoiceData.notes || "Thank you for your business!",
@@ -259,12 +264,17 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="dark:text-white">Invoices</CardTitle>
-          <CardDescription className="dark:text-gray-300">Loading invoices...</CardDescription>
+          <CardDescription className="dark:text-gray-300">
+            Loading invoices...
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div
+                key={i}
+                className="h-20 bg-gray-200 dark:bg-gray-700 rounded"
+              ></div>
             ))}
           </div>
         </CardContent>
@@ -277,11 +287,16 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="dark:text-white">Invoices</CardTitle>
-          <CardDescription className="dark:text-gray-300">Error loading invoices</CardDescription>
+          <CardDescription className="dark:text-gray-300">
+            Error loading invoices
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-red-500 dark:text-red-400">{fetchError}</p>
-          <Button onClick={() => fetchInvoices(clientId, true)} className="mt-4">
+          <Button
+            onClick={() => fetchInvoices(clientId, true)}
+            className="mt-4"
+          >
             Retry
           </Button>
         </CardContent>
@@ -461,13 +476,14 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button
+                        <LoadingButton
                           variant="outline"
                           size="sm"
                           onClick={() => handleDownloadPDF(invoice)}
+                          errorMessage="Failed to download PDF. Please try again."
                         >
                           <Download className="h-4 w-4" />
-                        </Button>
+                        </LoadingButton>
                         <Button
                           variant="outline"
                           size="sm"
@@ -492,14 +508,15 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                             <SelectItem value="CANCELLED">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button
+                        <LoadingButton
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteInvoice(invoice.id)}
                           className="text-red-600 hover:text-red-700 cursor-pointer"
+                          errorMessage="Failed to delete invoice. Please try again."
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </LoadingButton>
                       </div>
                     </div>
                   </div>
@@ -521,20 +538,21 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={cancelDelete}
               className="cursor-pointer hover:bg-gray-100 transition-colors duration-200"
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <LoadingButton
+              variant="destructive"
               onClick={confirmDelete}
               className="cursor-pointer hover:bg-red-700 transition-colors duration-200"
+              errorMessage="Failed to delete invoice. Please try again."
             >
               Delete
-            </Button>
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

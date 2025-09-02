@@ -1,15 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-import { useUser } from '@clerk/nextjs';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
+import { useUser } from "@clerk/nextjs";
 
 const ClientContext = createContext();
 
 export function useClients() {
   const context = useContext(ClientContext);
   if (!context) {
-    throw new Error('useClients must be used within a ClientProvider');
+    throw new Error("useClients must be used within a ClientProvider");
   }
   return context;
 }
@@ -27,23 +27,31 @@ export function ClientProvider({ children }) {
   const fetchClients = async (force = false) => {
     // Skip if not authenticated or still loading
     if (!isLoaded || !user) {
+      console.log("ClientContext: User not loaded or not authenticated", {
+        isLoaded,
+        user: !!user,
+      });
       setLoading(false);
       return;
     }
 
     // Check if we have fresh data and don't need to force refresh
     if (!force && lastFetch && Date.now() - lastFetch < CACHE_DURATION) {
+      console.log("ClientContext: Using cached data");
       return;
     }
 
     try {
+      console.log("ClientContext: Fetching clients from API");
       setLoading(true);
       setError(null);
-      const response = await axios.get('/api/clients');
+      const response = await axios.get("/api/clients");
+      console.log("ClientContext: Received clients:", response.data);
       setClients(response.data);
       setLastFetch(Date.now());
     } catch (err) {
-      console.error('Error fetching clients:', err);
+      console.error("ClientContext: Error fetching clients:", err);
+      console.error("ClientContext: Error response:", err.response?.data);
       setError(err.message);
       // Keep existing clients on error to avoid empty state
     } finally {
@@ -53,39 +61,42 @@ export function ClientProvider({ children }) {
 
   const addClient = async (clientData) => {
     try {
-      const response = await axios.post('/api/clients', clientData);
+      const response = await axios.post("/api/clients", clientData);
       const newClient = response.data;
-      
+
       // Optimistically update the client list
-      setClients(prev => [...prev, newClient]);
+      setClients((prev) => [...prev, newClient]);
       setLastFetch(Date.now());
-      
+
       return newClient;
     } catch (err) {
-      console.error('Error adding client:', err);
+      console.error("Error adding client:", err);
       throw err;
     }
   };
 
-  const updateClient = async (clientId, clientData) => {
+  const updateClient = async (
+    clientId,
+    clientData,
+    updateOption = "fromNow"
+  ) => {
     try {
-      const response = await axios.put('/api/clients', {
+      const response = await axios.put("/api/clients", {
         id: clientId,
-        ...clientData
+        ...clientData,
+        updateOption,
       });
       const updatedClient = response.data;
-      
+
       // Optimistically update the client list
-      setClients(prev => 
-        prev.map(client => 
-          client.id === clientId ? updatedClient : client
-        )
+      setClients((prev) =>
+        prev.map((client) => (client.id === clientId ? updatedClient : client))
       );
       setLastFetch(Date.now());
-      
+
       return updatedClient;
     } catch (err) {
-      console.error('Error updating client:', err);
+      console.error("Error updating client:", err);
       throw err;
     }
   };
@@ -93,18 +104,18 @@ export function ClientProvider({ children }) {
   const deleteClient = async (clientId) => {
     try {
       await axios.delete(`/api/clients?id=${clientId}`);
-      
+
       // Optimistically update the client list
-      setClients(prev => prev.filter(client => client.id !== clientId));
+      setClients((prev) => prev.filter((client) => client.id !== clientId));
       setLastFetch(Date.now());
     } catch (err) {
-      console.error('Error deleting client:', err);
+      console.error("Error deleting client:", err);
       throw err;
     }
   };
 
   const getClientById = (clientId) => {
-    return clients.find(client => client.id === clientId);
+    return clients.find((client) => client.id === clientId);
   };
 
   const refreshClients = () => {
@@ -128,12 +139,10 @@ export function ClientProvider({ children }) {
     deleteClient,
     getClientById,
     refreshClients,
-    lastFetch
+    lastFetch,
   };
 
   return (
-    <ClientContext.Provider value={value}>
-      {children}
-    </ClientContext.Provider>
+    <ClientContext.Provider value={value}>{children}</ClientContext.Provider>
   );
 }
