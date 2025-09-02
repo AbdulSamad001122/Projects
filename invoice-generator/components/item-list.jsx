@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -38,7 +38,8 @@ import { useItems } from "@/contexts/ItemContext";
 import { ItemForm } from "./item-form";
 
 export function ItemList({ selectedClients = [], showAllClients = false }) {
-  const { items, loading, deleteItem } = useItems();
+  const { items, loading, loadingMore, pagination, deleteItem, loadMoreItems } = useItems();
+  const itemsContainerRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showItemForm, setShowItemForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -191,7 +192,16 @@ export function ItemList({ selectedClients = [], showAllClients = false }) {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div 
+              ref={itemsContainerRef}
+              className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+              onScroll={(e) => {
+                const { scrollTop, scrollHeight, clientHeight } = e.target;
+                if (scrollHeight - scrollTop <= clientHeight + 50 && !loadingMore && pagination.hasMore) {
+                  loadMoreItems();
+                }
+              }}
+            >
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
@@ -285,6 +295,21 @@ export function ItemList({ selectedClients = [], showAllClients = false }) {
                   </div>
                 </div>
               ))}
+              
+              {/* Loading more indicator */}
+              {loadingMore && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">Loading more items...</span>
+                </div>
+              )}
+              
+              {/* End of list indicator */}
+              {!pagination.hasMore && items.length > 0 && filteredItems.length > 0 && (
+                <div className="text-center py-4">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">No more items to load</span>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

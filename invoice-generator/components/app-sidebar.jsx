@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useClients } from "@/contexts/ClientContext";
@@ -51,9 +51,19 @@ import axios from "axios";
 export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
   const { user } = useUser();
   const router = useRouter();
-  const { clients, loading, addClient, updateClient, deleteClient } =
-    useClients();
+  const {
+    clients,
+    loading,
+    loadingMore,
+    pagination,
+    createClient,
+    updateClient,
+    deleteClient,
+    refreshClients,
+    loadMoreClients,
+  } = useClients();
   const { refreshInvoices } = useInvoices();
+  const clientsContainerRef = useRef(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", email: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -309,7 +319,17 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
           </div>
 
           <SidebarGroupContent className="px-2 overflow-visible">
-            <SidebarMenu className="space-y-1 overflow-visible">
+            <div 
+              ref={clientsContainerRef}
+              className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+              onScroll={(e) => {
+                const { scrollTop, scrollHeight, clientHeight } = e.target;
+                if (scrollHeight - scrollTop <= clientHeight + 50 && !loadingMore && pagination.hasMore) {
+                  loadMoreClients();
+                }
+              }}
+            >
+              <SidebarMenu className="space-y-1 overflow-visible">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400"></div>
@@ -409,7 +429,23 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
                   );
                 })
               )}
+              
+              {/* Loading more indicator */}
+              {loadingMore && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">Loading more clients...</span>
+                </div>
+              )}
+              
+              {/* End of list indicator */}
+              {!pagination.hasMore && clients.length > 0 && filteredClients.length > 0 && (
+                <div className="text-center py-4">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">No more clients to load</span>
+                </div>
+              )}
             </SidebarMenu>
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

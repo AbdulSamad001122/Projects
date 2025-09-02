@@ -13,6 +13,9 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = parseInt(searchParams.get("limit")) || 10; // Default to 10 for invoices
+    const offset = (page - 1) * limit;
 
     if (!clientId) {
       return NextResponse.json(
@@ -24,7 +27,15 @@ export async function GET(request) {
     // Use cached user lookup to reduce database queries
     const user = await getCachedUser(userId);
 
-    // Fetch all invoices for the specific client
+    // Get total count for pagination metadata
+    const totalCount = await prisma.invoice.count({
+      where: {
+        clientId: clientId,
+        userId: user.id,
+      },
+    });
+
+    // Fetch invoices for the specific client with pagination
     const invoices = await prisma.invoice.findMany({
       where: {
         clientId: clientId,
@@ -33,9 +44,23 @@ export async function GET(request) {
       orderBy: {
         createdAt: "desc",
       },
+      skip: offset,
+      take: limit,
     });
 
-    return NextResponse.json({ invoices });
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasMore = page < totalPages;
+
+    return NextResponse.json({ 
+      invoices,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasMore,
+      },
+    });
   } catch (error) {
     console.error("Error fetching invoices:", error);
     return NextResponse.json(

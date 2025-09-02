@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import LoadingButton from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Plus, Package, Check } from "lucide-react";
+import { Trash2, Plus, Package, Check, ArrowLeft } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
 import { useItems } from "@/contexts/ItemContext";
@@ -41,6 +42,11 @@ export default function InvoiceForm({
   onCancel,
   preselectedClient,
 }) {
+  const router = useRouter();
+  
+  const handleBackToDashboard = () => {
+    router.push('/');
+  };
   const { getItemsForClient } = useItems();
   const [showSavedItemsDialog, setShowSavedItemsDialog] = useState(false);
   const [availableItems, setAvailableItems] = useState([]);
@@ -511,6 +517,19 @@ export default function InvoiceForm({
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* Back to Dashboard Button */}
+      <div className="mb-6">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBackToDashboard}
+          className="flex items-center space-x-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Dashboard</span>
+        </Button>
+      </div>
+      
       <Card>
         <CardHeader>
           <CardTitle>
@@ -1040,6 +1059,11 @@ export default function InvoiceForm({
                         type="number"
                         min="1"
                         value={item.quantity}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') {
+                            e.target.value = '';
+                          }
+                        }}
                         onChange={(e) =>
                           handleItemChange(
                             index,
@@ -1068,6 +1092,11 @@ export default function InvoiceForm({
                         min="0"
                         step="0.01"
                         value={item.rate}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') {
+                            e.target.value = '';
+                          }
+                        }}
                         onChange={(e) =>
                           handleItemChange(
                             index,
@@ -1135,6 +1164,11 @@ export default function InvoiceForm({
                     max="100"
                     step="0.01"
                     value={formData.taxRate}
+                    onFocus={(e) => {
+                      if (e.target.value === '0') {
+                        e.target.value = '';
+                      }
+                    }}
                     onChange={(e) =>
                       handleInputChange(
                         "taxRate",
@@ -1162,6 +1196,11 @@ export default function InvoiceForm({
                     max="100"
                     step="0.01"
                     value={formData.discountRate}
+                    onFocus={(e) => {
+                      if (e.target.value === '0') {
+                        e.target.value = '';
+                      }
+                    }}
                     onChange={(e) =>
                       handleInputChange(
                         "discountRate",

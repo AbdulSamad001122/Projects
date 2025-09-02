@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useUser } from "@clerk/nextjs";
 
@@ -18,46 +18,102 @@ export function ClientProvider({ children }) {
   const { user, isLoaded } = useUser();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 15,
+    totalCount: 0,
+    totalPages: 0,
+    hasMore: false,
+  });
 
   // Cache duration: 5 minutes
   const CACHE_DURATION = 5 * 60 * 1000;
 
-  const fetchClients = async (force = false) => {
-    // Skip if not authenticated or still loading
-    if (!isLoaded || !user) {
-      console.log("ClientContext: User not loaded or not authenticated", {
-        isLoaded,
-        user: !!user,
-      });
-      setLoading(false);
-      return;
-    }
+  const fetchClients = useCallback(async (force = false, reset = false) => {
+    if (!isLoaded || !user) return;
 
-    // Check if we have fresh data and don't need to force refresh
-    if (!force && lastFetch && Date.now() - lastFetch < CACHE_DURATION) {
-      console.log("ClientContext: Using cached data");
+    // Check cache validity for initial load
+    const now = Date.now();
+    if (!force && !reset && lastFetch && (now - lastFetch) < CACHE_DURATION && clients.length > 0) {
+      setLoading(false);
       return;
     }
 
     try {
-      console.log("ClientContext: Fetching clients from API");
-      setLoading(true);
+      const isInitialLoad = reset || clients.length === 0;
+      if (isInitialLoad) {
+        setLoading(true);
+        setPagination(prev => ({ ...prev, page: 1 }));
+      }
+      
       setError(null);
-      const response = await axios.get("/api/clients");
-      console.log("ClientContext: Received clients:", response.data);
-      setClients(response.data);
-      setLastFetch(Date.now());
+      const page = reset ? 1 : pagination.page;
+      const response = await axios.get(`/api/clients?page=${page}&limit=${pagination.limit}`);
+      
+      if (reset || isInitialLoad) {
+        setClients(response.data.clients);
+      } else {
+        setClients(prev => [...prev, ...response.data.clients]);
+      }
+      
+      setPagination({
+        page: response.data.pagination.page,
+        limit: response.data.pagination.limit,
+        totalCount: response.data.pagination.totalCount,
+        totalPages: response.data.pagination.totalPages,
+        hasMore: response.data.pagination.hasMore,
+      });
+      
+      setLastFetch(now);
     } catch (err) {
-      console.error("ClientContext: Error fetching clients:", err);
-      console.error("ClientContext: Error response:", err.response?.data);
-      setError(err.message);
-      // Keep existing clients on error to avoid empty state
+      console.error('Error fetching clients:', err);
+      setError('Failed to fetch clients');
     } finally {
       setLoading(false);
     }
-  };
+  }, [isLoaded, user, lastFetch, CACHE_DURATION]);
+
+  const loadMoreClients = useCallback(async () => {
+    let currentPagination = null;
+    let isCurrentlyLoading = false;
+    
+    // Get current state values using functional updates
+    setPagination(prev => {
+      currentPagination = prev;
+      return prev;
+    });
+    
+    setLoadingMore(prev => {
+      isCurrentlyLoading = prev;
+      return prev;
+    });
+    
+    if (!currentPagination.hasMore || isCurrentlyLoading) return;
+
+    try {
+      setLoadingMore(true);
+      setError(null);
+      const nextPage = currentPagination.page + 1;
+      const response = await axios.get(`/api/clients?page=${nextPage}&limit=${currentPagination.limit}`);
+      
+      setClients(prev => [...prev, ...response.data.clients]);
+      setPagination({
+        page: response.data.pagination.page,
+        limit: response.data.pagination.limit,
+        totalCount: response.data.pagination.totalCount,
+        totalPages: response.data.pagination.totalPages,
+        hasMore: response.data.pagination.hasMore,
+      });
+    } catch (err) {
+      console.error('Error loading more clients:', err);
+      setError('Failed to load more clients');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, []);
 
   const addClient = async (clientData) => {
     try {
@@ -119,7 +175,7 @@ export function ClientProvider({ children }) {
   };
 
   const refreshClients = () => {
-    return fetchClients(true);
+    fetchClients(true, true); // force refresh and reset pagination
   };
 
   // Initial fetch when user is loaded
@@ -132,8 +188,11 @@ export function ClientProvider({ children }) {
   const value = {
     clients,
     loading,
+    loadingMore,
     error,
+    pagination,
     fetchClients,
+    loadMoreClients,
     addClient,
     updateClient,
     deleteClient,

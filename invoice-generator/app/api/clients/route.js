@@ -3,8 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { getCachedUser } from "@/lib/userCache";
 import prisma from "@/lib/prisma";
 
-// GET /api/clients - Fetch all clients for the authenticated user
-export async function GET() {
+// GET /api/clients - Fetch clients for the authenticated user with pagination support
+export async function GET(request) {
   try {
     const { userId } = await auth();
 
@@ -12,17 +12,47 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Parse pagination parameters from URL
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = parseInt(searchParams.get("limit")) || 15; // Default to 15 for sidebar
+    const offset = (page - 1) * limit;
+
     // Use cached user lookup to reduce database queries
     const dbUser = await getCachedUser(userId);
 
-    // Fetch clients for this user
-    const clients = await prisma.client.findMany({
+    // Get total count for pagination metadata
+    const totalCount = await prisma.client.count({
       where: {
         userId: dbUser.id,
       },
     });
 
-    return NextResponse.json(clients);
+    // Fetch clients for this user with pagination
+    const clients = await prisma.client.findMany({
+      where: {
+        userId: dbUser.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip: offset,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasMore = page < totalPages;
+
+    return NextResponse.json({
+      clients,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasMore,
+      },
+    });
   } catch (error) {
     console.error("Error fetching clients:", error);
     return NextResponse.json(

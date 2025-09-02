@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import LoadingButton from "@/components/ui/loading-button";
 import {
@@ -47,11 +47,15 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   const {
     getInvoicesForClient,
     loading,
+    loadingMore,
+    pagination,
     error,
     fetchInvoices,
+    loadMoreInvoices,
     deleteInvoice,
     updateInvoiceStatus,
   } = useInvoices();
+  const invoicesContainerRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDate, setSearchDate] = useState("");
@@ -63,11 +67,13 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   const rawInvoices = getInvoicesForClient(clientId);
   const invoices = useMemo(() => rawInvoices, [rawInvoices]);
   const isLoading = loading[clientId] || false;
+  const isLoadingMore = loadingMore[clientId] || false;
   const fetchError = error[clientId] || null;
+  const clientPagination = pagination[clientId] || { hasMore: false };
 
   useEffect(() => {
     if (clientId) {
-      fetchInvoices(clientId);
+      fetchInvoices(clientId, true); // Reset pagination when client changes
     }
   }, [clientId, fetchInvoices]);
 
@@ -424,7 +430,16 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div 
+              ref={invoicesContainerRef}
+              className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+              onScroll={(e) => {
+                const { scrollTop, scrollHeight, clientHeight } = e.target;
+                if (scrollHeight - scrollTop <= clientHeight + 50 && !loadingMore && pagination.hasMore) {
+                  loadMoreInvoices(clientId);
+                }
+              }}
+            >
               {filteredInvoices.map((invoice) => {
                 const invoiceData = invoice.data || {};
                 return (
@@ -522,6 +537,21 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                   </div>
                 );
               })}
+              
+              {/* Loading more indicator */}
+              {isLoadingMore && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">Loading more invoices...</span>
+                </div>
+              )}
+              
+              {/* End of list indicator */}
+              {!clientPagination.hasMore && invoices.length > 0 && filteredInvoices.length > 0 && !isLoadingMore && (
+                <div className="text-center py-4">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">All invoices loaded successfully</span>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

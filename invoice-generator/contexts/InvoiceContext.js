@@ -18,8 +18,10 @@ export function InvoiceProvider({ children }) {
   const { user, isLoaded } = useUser();
   const [invoicesByClient, setInvoicesByClient] = useState({});
   const [loading, setLoading] = useState({});
+  const [loadingMore, setLoadingMore] = useState({});
   const [error, setError] = useState({});
   const [lastFetch, setLastFetch] = useState({});
+  const [pagination, setPagination] = useState({});
 
   // Cache duration: 2 minutes for invoices (shorter than clients as they change more frequently)
   const CACHE_DURATION = 2 * 60 * 1000;
@@ -44,37 +46,93 @@ export function InvoiceProvider({ children }) {
     
     setLastFetch(prev => {
       const cleaned = {};
-      Object.keys(prev).forEach(id => {
-        if (Object.keys(invoicesByClient).includes(id)) {
-          cleaned[id] = prev[id];
-        }
+      // Use functional state update to get current invoicesByClient
+      setInvoicesByClient(currentInvoices => {
+        Object.keys(prev).forEach(id => {
+          if (Object.keys(currentInvoices).includes(id)) {
+            cleaned[id] = prev[id];
+          }
+        });
+        return currentInvoices;
       });
       return cleaned;
     });
-  }, [lastFetch, invoicesByClient]);
+  }, []);
 
-  const fetchInvoices = useCallback(async (clientId, force = false) => {
+  const fetchInvoices = useCallback(async (clientId, force = false, reset = false) => {
     // Skip if not authenticated or still loading
     if (!isLoaded || !user || !clientId) {
       return;
     }
 
     // Check if we have fresh data and don't need to force refresh
-    const lastFetchTime = lastFetch[clientId];
-    if (!force && lastFetchTime && Date.now() - lastFetchTime < CACHE_DURATION) {
+    let lastFetchTime = null;
+    setLastFetch(prev => {
+      lastFetchTime = prev[clientId];
+      return prev;
+    });
+    
+    if (!force && !reset && lastFetchTime && Date.now() - lastFetchTime < CACHE_DURATION) {
       return;
     }
 
     try {
-      setLoading(prev => ({ ...prev, [clientId]: true }));
+      // Use functional state updates to avoid dependency issues
+      let isInitialLoad = false;
+      let currentPagination = { page: 1, limit: 10 };
+      
+      // Get current state values
+      setInvoicesByClient(prev => {
+        isInitialLoad = reset || !prev[clientId] || prev[clientId].length === 0;
+        return prev;
+      });
+      
+      setPagination(prev => {
+        currentPagination = prev[clientId] || { page: 1, limit: 10 };
+        if (isInitialLoad) {
+          return { ...prev, [clientId]: { page: 1, limit: 10, totalCount: 0, totalPages: 0, hasMore: false } };
+        }
+        return prev;
+      });
+      
+      if (isInitialLoad) {
+        setLoading(prev => ({ ...prev, [clientId]: true }));
+      }
+      
       setError(prev => ({ ...prev, [clientId]: null }));
       
-      const response = await axios.get(`/api/invoices?clientId=${clientId}`);
-      const invoices = response.data.invoices || [];
+      const page = reset ? 1 : currentPagination.page;
+      const response = await axios.get(`/api/invoices?clientId=${clientId}&page=${page}&limit=${currentPagination.limit}`);
       
-      setInvoicesByClient(prev => ({
+      const newInvoices = response.data.invoices || [];
+      
+      if (reset || isInitialLoad) {
+        setInvoicesByClient(prev => ({
+          ...prev,
+          [clientId]: newInvoices
+        }));
+      } else {
+        setInvoicesByClient(prev => {
+          const existingInvoices = prev[clientId] || [];
+          const existingIds = new Set(existingInvoices.map(invoice => invoice.id));
+          const uniqueNewInvoices = newInvoices.filter(invoice => !existingIds.has(invoice.id));
+          
+          return {
+            ...prev,
+            [clientId]: [...existingInvoices, ...uniqueNewInvoices]
+          };
+        });
+      }
+      
+      setPagination(prev => ({
         ...prev,
-        [clientId]: invoices
+        [clientId]: {
+          page: response.data.pagination.page,
+          limit: response.data.pagination.limit,
+          totalCount: response.data.pagination.totalCount,
+          totalPages: response.data.pagination.totalPages,
+          hasMore: response.data.pagination.hasMore,
+        }
       }));
       
       setLastFetch(prev => ({
@@ -94,17 +152,85 @@ export function InvoiceProvider({ children }) {
     } finally {
       setLoading(prev => ({ ...prev, [clientId]: false }));
     }
-  }, [isLoaded, user, lastFetch, CACHE_DURATION]);
+  }, [isLoaded, user, CACHE_DURATION]);
+
+  const loadMoreInvoices = useCallback(async (clientId) => {
+    let clientPagination = null;
+    let isCurrentlyLoading = false;
+    
+    // Get current state values using functional updates
+    setPagination(prev => {
+      clientPagination = prev[clientId];
+      return prev;
+    });
+    
+    setLoadingMore(prev => {
+      isCurrentlyLoading = prev[clientId];
+      return prev;
+    });
+    
+    if (!clientPagination?.hasMore || isCurrentlyLoading) return;
+
+    try {
+      setLoadingMore(prev => ({ ...prev, [clientId]: true }));
+      setError(prev => ({ ...prev, [clientId]: null }));
+      
+      const nextPage = clientPagination.page + 1;
+      const response = await axios.get(`/api/invoices?clientId=${clientId}&page=${nextPage}&limit=${clientPagination.limit}`);
+      
+      const newInvoices = response.data.invoices || [];
+      
+      setInvoicesByClient(prev => {
+        const existingInvoices = prev[clientId] || [];
+        const existingIds = new Set(existingInvoices.map(invoice => invoice.id));
+        const uniqueNewInvoices = newInvoices.filter(invoice => !existingIds.has(invoice.id));
+        
+        return {
+          ...prev,
+          [clientId]: [...existingInvoices, ...uniqueNewInvoices]
+        };
+      });
+      
+      setPagination(prev => ({
+        ...prev,
+        [clientId]: {
+          page: response.data.pagination.page,
+          limit: response.data.pagination.limit,
+          totalCount: response.data.pagination.totalCount,
+          totalPages: response.data.pagination.totalPages,
+          hasMore: response.data.pagination.hasMore,
+        }
+      }));
+    } catch (err) {
+      console.error('Error loading more invoices:', err);
+      setError(prev => ({
+        ...prev,
+        [clientId]: 'Failed to load more invoices'
+      }));
+    } finally {
+      setLoadingMore(prev => ({ ...prev, [clientId]: false }));
+    }
+  }, []);
 
   const createInvoice = useCallback(async (newInvoice) => {
     try {
       const clientId = newInvoice.clientId;
       
       // Add the already created invoice to the list
-      setInvoicesByClient(prev => ({
-        ...prev,
-        [clientId]: [newInvoice, ...(prev[clientId] || [])]
-      }));
+      setInvoicesByClient(prev => {
+        const existingInvoices = prev[clientId] || [];
+        const existingIds = new Set(existingInvoices.map(invoice => invoice.id));
+        
+        // Only add if it doesn't already exist
+        if (!existingIds.has(newInvoice.id)) {
+          return {
+            ...prev,
+            [clientId]: [newInvoice, ...existingInvoices]
+          };
+        }
+        
+        return prev;
+      });
       
       setLastFetch(prev => ({
         ...prev,
@@ -197,7 +323,7 @@ export function InvoiceProvider({ children }) {
   }, [invoicesByClient]);
 
   const refreshInvoices = useCallback((clientId) => {
-    return fetchInvoices(clientId, true);
+    return fetchInvoices(clientId, true, true); // force refresh and reset pagination
   }, [fetchInvoices]);
 
   const clearClientInvoices = useCallback((clientId) => {
@@ -226,8 +352,11 @@ export function InvoiceProvider({ children }) {
   const value = {
     invoicesByClient,
     loading,
+    loadingMore,
     error,
+    pagination,
     fetchInvoices,
+    loadMoreInvoices,
     createInvoice,
     updateInvoice,
     updateInvoiceStatus,
