@@ -56,7 +56,7 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
     loading,
     loadingMore,
     pagination,
-    createClient,
+    addClient,
     updateClient,
     deleteClient,
     refreshClients,

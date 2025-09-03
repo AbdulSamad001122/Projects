@@ -34,6 +34,8 @@ import { Trash2, Plus, Package, Check, ArrowLeft } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
 import { useItems } from "@/contexts/ItemContext";
+import { getTemplateComponent, getDefaultTemplate } from "@/app/utils/templates";
+import TemplateSelector from "@/components/template-selector";
 import axios from "axios";
 
 export default function InvoiceForm({
@@ -43,9 +45,9 @@ export default function InvoiceForm({
   preselectedClient,
 }) {
   const router = useRouter();
-  
+
   const handleBackToDashboard = () => {
-    router.push('/');
+    router.push("/");
   };
   const { getItemsForClient } = useItems();
   const [showSavedItemsDialog, setShowSavedItemsDialog] = useState(false);
@@ -83,6 +85,8 @@ export default function InvoiceForm({
       // Payment Information
       bankName: invoiceData?.bankName || "",
       bankAccount: invoiceData?.bankAccount || "",
+      // Template Selection
+      selectedTemplate: invoiceData?.selectedTemplate || getDefaultTemplate(),
     };
   });
 
@@ -118,6 +122,8 @@ export default function InvoiceForm({
         // Payment Information
         bankName: invoiceData?.bankName || "",
         bankAccount: invoiceData?.bankAccount || "",
+        // Template Selection
+        selectedTemplate: invoiceData?.selectedTemplate || getDefaultTemplate(),
       });
     }
   }, [invoice]);
@@ -132,14 +138,12 @@ export default function InvoiceForm({
       if (preselectedClient && preselectedClient.id && !invoice) {
         setIsLoadingAutoData(true);
         try {
-          // Fetch existing invoices for this client
-          const response = await axios.get(
-            `/api/invoices?clientId=${preselectedClient.id}`
-          );
-          const invoices = response.data.invoices || [];
-
-          // Generate next invoice number
-          const nextInvoiceNumber = `INV-${invoices.length + 1}`;
+          // Generate next invoice number using the new utility function
+          const response = await axios.post('/api/generateInvoiceNumber', {
+            clientId: preselectedClient.id
+          });
+          
+          const nextInvoiceNumber = response.data.invoiceNumber;
 
           // Update form data with auto-generated invoice number
           setFormData((prev) => ({
@@ -349,7 +353,9 @@ export default function InvoiceForm({
     setFormData((prev) => {
       // Limit custom fields to prevent memory issues (max 20 fields per type)
       if (prev[fieldKey].length >= 20) {
-        alert(`Maximum of 20 custom fields allowed for ${fieldType} information.`);
+        alert(
+          `Maximum of 20 custom fields allowed for ${fieldType} information.`
+        );
         return prev;
       }
       return {
@@ -369,13 +375,13 @@ export default function InvoiceForm({
 
   const handleCustomFieldChange = (fieldType, index, field, value) => {
     const fieldKey = `${fieldType}CustomFields`;
-    
+
     // Limit field value length to prevent memory issues (max 500 characters)
     if (value.length > 500) {
       alert(`Custom field ${field} cannot exceed 500 characters.`);
       return;
     }
-    
+
     setFormData((prev) => {
       const newFields = [...prev[fieldKey]];
       newFields[index] = { ...newFields[index], [field]: value };
@@ -417,6 +423,7 @@ export default function InvoiceForm({
       terms: formData.terms,
       bankName: formData.bankName,
       bankAccount: formData.bankAccount,
+      selectedTemplate: formData.selectedTemplate,
     };
   };
 
@@ -427,15 +434,18 @@ export default function InvoiceForm({
 
     try {
       const invoiceData = generateInvoiceData();
-      const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
+      const TemplateComponent = getTemplateComponent(formData.selectedTemplate);
+      const blob = await pdf(
+        <TemplateComponent invoiceData={invoiceData} />
+      ).toBlob();
       const url = URL.createObjectURL(blob);
       const newWindow = window.open(url, "_blank");
-      
+
       // Clean up the URL after a delay to prevent memory leaks
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 1000);
-      
+
       // Also clean up if the window is closed
       if (newWindow) {
         const checkClosed = setInterval(() => {
@@ -458,7 +468,10 @@ export default function InvoiceForm({
 
     try {
       const invoiceData = generateInvoiceData();
-      const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
+      const TemplateComponent = getTemplateComponent(formData.selectedTemplate);
+      const blob = await pdf(
+        <TemplateComponent invoiceData={invoiceData} />
+      ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -497,7 +510,10 @@ export default function InvoiceForm({
 
       // Then download the PDF
       const invoiceData = generateInvoiceData();
-      const blob = await pdf(<InvoicePDF invoiceData={invoiceData} />).toBlob();
+      const TemplateComponent = getTemplateComponent(formData.selectedTemplate);
+      const blob = await pdf(
+        <TemplateComponent invoiceData={invoiceData} />
+      ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -529,7 +545,7 @@ export default function InvoiceForm({
           <span>Back to Dashboard</span>
         </Button>
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -618,6 +634,18 @@ export default function InvoiceForm({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Template Selection */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Template Selection</h3>
+              <TemplateSelector
+                selectedTemplate={formData.selectedTemplate}
+                onTemplateChange={(templateId) =>
+                  handleInputChange("selectedTemplate", templateId)
+                }
+                className="w-full"
+              />
             </div>
 
             {/* PDF Options */}
@@ -722,7 +750,9 @@ export default function InvoiceForm({
               {/* Company Custom Fields */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Additional Company Information</Label>
+                  <Label className="text-sm font-medium">
+                    Additional Company Information
+                  </Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -735,25 +765,42 @@ export default function InvoiceForm({
                   </Button>
                 </div>
                 {formData.companyCustomFields.map((field, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end"
+                  >
                     <div>
-                      <Label htmlFor={`companyField${index}Name`}>Field Name</Label>
+                      <Label htmlFor={`companyField${index}Name`}>
+                        Field Name
+                      </Label>
                       <Input
                         id={`companyField${index}Name`}
                         value={field.name}
                         onChange={(e) =>
-                          handleCustomFieldChange("company", index, "name", e.target.value)
+                          handleCustomFieldChange(
+                            "company",
+                            index,
+                            "name",
+                            e.target.value
+                          )
                         }
                         placeholder="e.g., Phone, Address, Website"
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`companyField${index}Value`}>Field Value</Label>
+                      <Label htmlFor={`companyField${index}Value`}>
+                        Field Value
+                      </Label>
                       <Input
                         id={`companyField${index}Value`}
                         value={field.value}
                         onChange={(e) =>
-                          handleCustomFieldChange("company", index, "value", e.target.value)
+                          handleCustomFieldChange(
+                            "company",
+                            index,
+                            "value",
+                            e.target.value
+                          )
                         }
                         placeholder="Enter value"
                       />
@@ -845,7 +892,9 @@ export default function InvoiceForm({
               {/* Client Custom Fields */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Additional Client Information</Label>
+                  <Label className="text-sm font-medium">
+                    Additional Client Information
+                  </Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -858,25 +907,42 @@ export default function InvoiceForm({
                   </Button>
                 </div>
                 {formData.clientCustomFields.map((field, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end"
+                  >
                     <div>
-                      <Label htmlFor={`clientField${index}Name`}>Field Name</Label>
+                      <Label htmlFor={`clientField${index}Name`}>
+                        Field Name
+                      </Label>
                       <Input
                         id={`clientField${index}Name`}
                         value={field.name}
                         onChange={(e) =>
-                          handleCustomFieldChange("client", index, "name", e.target.value)
+                          handleCustomFieldChange(
+                            "client",
+                            index,
+                            "name",
+                            e.target.value
+                          )
                         }
                         placeholder="e.g., Phone, Address, Tax ID"
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`clientField${index}Value`}>Field Value</Label>
+                      <Label htmlFor={`clientField${index}Value`}>
+                        Field Value
+                      </Label>
                       <Input
                         id={`clientField${index}Value`}
                         value={field.value}
                         onChange={(e) =>
-                          handleCustomFieldChange("client", index, "value", e.target.value)
+                          handleCustomFieldChange(
+                            "client",
+                            index,
+                            "value",
+                            e.target.value
+                          )
                         }
                         placeholder="Enter value"
                       />
@@ -1060,8 +1126,8 @@ export default function InvoiceForm({
                         min="1"
                         value={item.quantity}
                         onFocus={(e) => {
-                          if (e.target.value === '0') {
-                            e.target.value = '';
+                          if (e.target.value === "0") {
+                            e.target.value = "";
                           }
                         }}
                         onChange={(e) =>
@@ -1093,8 +1159,8 @@ export default function InvoiceForm({
                         step="0.01"
                         value={item.rate}
                         onFocus={(e) => {
-                          if (e.target.value === '0') {
-                            e.target.value = '';
+                          if (e.target.value === "0") {
+                            e.target.value = "";
                           }
                         }}
                         onChange={(e) =>
@@ -1165,8 +1231,8 @@ export default function InvoiceForm({
                     step="0.01"
                     value={formData.taxRate}
                     onFocus={(e) => {
-                      if (e.target.value === '0') {
-                        e.target.value = '';
+                      if (e.target.value === "0") {
+                        e.target.value = "";
                       }
                     }}
                     onChange={(e) =>
@@ -1197,8 +1263,8 @@ export default function InvoiceForm({
                     step="0.01"
                     value={formData.discountRate}
                     onFocus={(e) => {
-                      if (e.target.value === '0') {
-                        e.target.value = '';
+                      if (e.target.value === "0") {
+                        e.target.value = "";
                       }
                     }}
                     onChange={(e) =>

@@ -297,21 +297,13 @@ export function InvoiceProvider({ children }) {
     try {
       await axios.delete(`/api/invoices?id=${invoiceId}`);
       
-      // Optimistically update the invoice list
-      setInvoicesByClient(prev => ({
-        ...prev,
-        [clientId]: (prev[clientId] || []).filter(invoice => invoice.id !== invoiceId)
-      }));
-      
-      setLastFetch(prev => ({
-        ...prev,
-        [clientId]: Date.now()
-      }));
+      // Refresh the invoice list to get updated invoice numbers after re-arrangement
+      await fetchInvoices(clientId, true, true);
     } catch (err) {
       console.error('Error deleting invoice:', err);
       throw err;
     }
-  }, []);
+  }, [fetchInvoices]);
 
   const getInvoicesForClient = useCallback((clientId) => {
     return invoicesByClient[clientId] || [];

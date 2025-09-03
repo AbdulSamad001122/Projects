@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
+import { getTemplateComponent, DEFAULT_TEMPLATE } from "@/app/utils/templates";
 import { useInvoices } from "@/contexts/InvoiceContext";
 
 export default function InvoiceList({ clientId, onEditInvoice }) {
@@ -155,8 +156,12 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
         bankAccount: invoiceData.bankAccount || "",
       };
 
-      // Generate and download the PDF
-      const blob = await pdf(<InvoicePDF invoiceData={pdfData} />).toBlob();
+      // Generate and download the PDF using selected template
+      const selectedTemplate = invoiceData.selectedTemplate || DEFAULT_TEMPLATE;
+      const TemplateComponent = getTemplateComponent(selectedTemplate);
+      const blob = await pdf(
+        <TemplateComponent invoiceData={pdfData} />
+      ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -430,12 +435,16 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
               </p>
             </div>
           ) : (
-            <div 
+            <div
               ref={invoicesContainerRef}
               className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
               onScroll={(e) => {
                 const { scrollTop, scrollHeight, clientHeight } = e.target;
-                if (scrollHeight - scrollTop <= clientHeight + 50 && !loadingMore && pagination.hasMore) {
+                if (
+                  scrollHeight - scrollTop <= clientHeight + 50 &&
+                  !loadingMore &&
+                  pagination.hasMore
+                ) {
                   loadMoreInvoices(clientId);
                 }
               }}
@@ -537,21 +546,28 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                   </div>
                 );
               })}
-              
+
               {/* Loading more indicator */}
               {isLoadingMore && (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">Loading more invoices...</span>
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
+                    Loading more invoices...
+                  </span>
                 </div>
               )}
-              
+
               {/* End of list indicator */}
-              {!clientPagination.hasMore && invoices.length > 0 && filteredInvoices.length > 0 && !isLoadingMore && (
-                <div className="text-center py-4">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">All invoices loaded successfully</span>
-                </div>
-              )}
+              {!clientPagination.hasMore &&
+                invoices.length > 0 &&
+                filteredInvoices.length > 0 &&
+                !isLoadingMore && (
+                  <div className="text-center py-4">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      All invoices loaded successfully
+                    </span>
+                  </div>
+                )}
             </div>
           )}
         </CardContent>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCachedUser } from "@/lib/userCache";
 import prisma from "@/lib/prisma";
+import { renumberClientInvoices, isAutoRenumberingEnabled } from "@/app/utils/invoiceRenumbering";
 
 export async function GET(request) {
   try {
@@ -200,6 +201,26 @@ export async function DELETE(request) {
     // Use cached user lookup to reduce database queries
     const user = await getCachedUser(userId);
 
+    // First, get the invoice to find its clientId before deletion
+    const invoiceToDelete = await prisma.invoice.findFirst({
+      where: {
+        id: invoiceId,
+        userId: user.id,
+      },
+      select: {
+        clientId: true,
+      },
+    });
+
+    if (!invoiceToDelete) {
+      return NextResponse.json(
+        { error: "Invoice not found" },
+        { status: 404 }
+      );
+    }
+
+    const { clientId } = invoiceToDelete;
+
     // Delete the invoice (only if it belongs to the authenticated user)
     await prisma.invoice.delete({
       where: {
@@ -207,6 +228,14 @@ export async function DELETE(request) {
         userId: user.id,
       },
     });
+
+    // Check if auto-renumbering is enabled for this client
+    const autoRenumberEnabled = await isAutoRenumberingEnabled(clientId, user.id);
+    
+    if (autoRenumberEnabled) {
+      // Re-number remaining invoices for this client
+      await renumberClientInvoices(clientId, user.id);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

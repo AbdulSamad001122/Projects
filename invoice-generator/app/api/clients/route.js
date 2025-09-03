@@ -33,6 +33,14 @@ export async function GET(request) {
       where: {
         userId: dbUser.id,
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        autoRenumberInvoices: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -102,6 +110,7 @@ export async function POST(request) {
         name: name.trim(),
         email: email?.trim() || null,
         userId: dbUser.id, // Use the database user's id
+        autoRenumberInvoices: true, // Default to auto-renumbering enabled
       },
     });
 

@@ -1,6 +1,6 @@
 "use client";
 
-// import { useEffect } from "react"; // No longer needed
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -11,15 +11,55 @@ import {
 import { Button } from "@/components/ui/button";
 import LoadingButton from "@/components/ui/loading-button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, FileText, Download, Calendar, DollarSign } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, FileText, Download, Calendar, DollarSign, Settings } from "lucide-react";
 import { useInvoices } from "@/contexts/InvoiceContext";
 
 export function ClientDetails({ client, onCreateInvoice }) {
   const { getInvoicesForClient, loading, fetchInvoices } = useInvoices();
+  const [autoRenumberInvoices, setAutoRenumberInvoices] = useState(true);
+  const [isUpdatingToggle, setIsUpdatingToggle] = useState(false);
 
   // Get invoices from context
   const invoices = client ? getInvoicesForClient(client.id) : [];
   const isLoading = client ? loading[client.id] || false : false;
+
+  // Load client's auto-renumbering setting
+  useEffect(() => {
+    if (client) {
+      setAutoRenumberInvoices(client.autoRenumberInvoices ?? true);
+    }
+  }, [client]);
+
+  // Handle toggle change
+  const handleToggleChange = async (checked) => {
+    if (!client) return;
+    
+    setIsUpdatingToggle(true);
+    try {
+      const response = await fetch(`/api/clients/${client.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          autoRenumberInvoices: checked,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update setting');
+      }
+
+      setAutoRenumberInvoices(checked);
+    } catch (error) {
+      console.error('Error updating auto-renumber setting:', error);
+      // Revert the toggle if the update failed
+      setAutoRenumberInvoices(!checked);
+    } finally {
+      setIsUpdatingToggle(false);
+    }
+  };
 
   // Removed fetchInvoices call - invoice-list component handles fetching
   // useEffect(() => {
@@ -97,7 +137,7 @@ export function ClientDetails({ client, onCreateInvoice }) {
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
                 <p className="text-sm font-medium text-muted-foreground dark:text-gray-400">
                   Email
@@ -119,6 +159,28 @@ export function ClientDetails({ client, onCreateInvoice }) {
                 <p className="text-sm dark:text-gray-200">
                   {client.address || "Not provided"}
                 </p>
+              </div>
+            </div>
+            
+            {/* Invoice Settings */}
+            <div className="border-t pt-4 dark:border-gray-600">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium dark:text-gray-200">
+                      Auto-renumber invoices
+                    </p>
+                    <p className="text-xs text-muted-foreground dark:text-gray-400">
+                      Automatically renumber invoices when one is deleted
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={autoRenumberInvoices}
+                  onCheckedChange={handleToggleChange}
+                  disabled={isUpdatingToggle}
+                />
               </div>
             </div>
           </CardContent>
