@@ -38,6 +38,7 @@ import {
   Search,
   X,
   CheckCircle,
+  Copy,
 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
@@ -55,6 +56,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     loadMoreInvoices,
     deleteInvoice,
     updateInvoiceStatus,
+    duplicateInvoice,
   } = useInvoices();
   const invoicesContainerRef = useRef(null);
 
@@ -193,6 +195,15 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
         console.error("Error deleting invoice:", error);
         alert("Error deleting invoice. Please try again.");
       }
+    }
+  };
+
+  const handleDuplicateInvoice = async (invoiceId) => {
+    try {
+      await duplicateInvoice(invoiceId, clientId);
+    } catch (error) {
+      console.error("Error duplicating invoice:", error);
+      alert("Error duplicating invoice. Please try again.");
     }
   };
 
@@ -442,8 +453,8 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                 const { scrollTop, scrollHeight, clientHeight } = e.target;
                 if (
                   scrollHeight - scrollTop <= clientHeight + 50 &&
-                  !loadingMore &&
-                  pagination.hasMore
+                  !isLoadingMore &&
+                  clientPagination.hasMore
                 ) {
                   loadMoreInvoices(clientId);
                 }
@@ -517,6 +528,15 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        <LoadingButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDuplicateInvoice(invoice.id)}
+                          errorMessage="Failed to duplicate invoice. Please try again."
+                          title="Duplicate Invoice"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </LoadingButton>
                         <Select
                           value={invoiceData.status || "PENDING"}
                           onValueChange={(newStatus) =>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useClients } from "@/contexts/ClientContext";
 import Link from "next/link";
@@ -23,14 +23,10 @@ import {
   TrendingUp,
   Calendar,
   FileText,
+  Building2,
+  X,
 } from "lucide-react";
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import SidebarAwareNavbar from "@/components/SidebarAwareNavbar";
+
 import {
   Card,
   CardContent,
@@ -38,6 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import CompanyProfileForm from "@/components/company-profile-form";
 import axios from "axios";
 
 export default function Home() {
@@ -46,6 +43,37 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", email: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasCompanyProfile, setHasCompanyProfile] = useState(true);
+  const [showCompanyProfileBanner, setShowCompanyProfileBanner] = useState(false);
+  const [showCompanyProfileModal, setShowCompanyProfileModal] = useState(false);
+  const [companyProfileLoading, setCompanyProfileLoading] = useState(true);
+
+  // Check company profile status
+  useEffect(() => {
+    const checkCompanyProfile = async () => {
+      if (!isSignedIn) return;
+
+      try {
+        const response = await fetch("/api/company-profile");
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            const hasProfile = result.data.hasCompanyProfile;
+            setHasCompanyProfile(hasProfile);
+            setShowCompanyProfileBanner(!hasProfile);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking company profile:", error);
+      } finally {
+        setCompanyProfileLoading(false);
+      }
+    };
+
+    if (isLoaded && isSignedIn) {
+      checkCompanyProfile();
+    }
+  }, [isLoaded, isSignedIn]);
 
   // Show loading state while Clerk is loading
   if (!isLoaded) {
@@ -110,19 +138,24 @@ export default function Home() {
     setClientForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleCompanyProfileSaved = (profileData) => {
+    setHasCompanyProfile(true);
+    setShowCompanyProfileBanner(false);
+    setShowCompanyProfileModal(false);
+  };
+
+  const handleDismissBanner = () => {
+    setShowCompanyProfileBanner(false);
+  };
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <SidebarAwareNavbar />
-        <div className="flex-1 space-y-8 p-8 pt-20">
+    <div className="space-y-8">
           {/* Enhanced Header with Gradient Background */}
           <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-700 dark:via-purple-700 dark:to-indigo-700 p-8 text-white">
             <div className="absolute inset-0 bg-black/20 dark:bg-black/40"></div>
             <div className="relative z-10 flex justify-between items-center">
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
-                  <SidebarTrigger className="text-white hover:bg-white/20 border-white/30" />
                   <Sparkles className="h-6 w-6" />
                   <h1 className="text-4xl font-bold tracking-tight">
                     Dashboard
@@ -228,6 +261,62 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Company Profile Setup Banner */}
+          {showCompanyProfileBanner && (
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 dark:from-orange-600 dark:to-red-600 text-white p-4 rounded-lg shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Building2 className="h-6 w-6" />
+                  <div>
+                    <h3 className="font-semibold text-lg">
+                      Complete Your Company Profile
+                    </h3>
+                    <p className="text-orange-100 dark:text-orange-200 text-sm">
+                      Add your company details to personalize your invoices and make them more professional.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={() => setShowCompanyProfileModal(true)}
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white text-orange-600 hover:bg-orange-50 dark:bg-gray-100 dark:text-orange-700 dark:hover:bg-gray-200"
+                  >
+                    Set Up Now
+                  </Button>
+                  <Button
+                    onClick={handleDismissBanner}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Company Profile Modal */}
+          <Dialog open={showCompanyProfileModal} onOpenChange={setShowCompanyProfileModal}>
+            <DialogContent className="sm:max-w-[600px] dark:bg-gray-800 dark:border-gray-700">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-semibold flex items-center dark:text-white">
+                  <Building2 className="mr-2 h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  Company Profile Setup
+                </DialogTitle>
+                <DialogDescription className="text-base dark:text-gray-300">
+                  Add your company information to personalize your invoices.
+                </DialogDescription>
+              </DialogHeader>
+              <CompanyProfileForm
+                onSave={handleCompanyProfileSaved}
+                onCancel={() => setShowCompanyProfileModal(false)}
+              />
+            </DialogContent>
+          </Dialog>
+
           {/* Welcome Cards Section */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 dark:bg-gray-800 hover:shadow-xl transition-shadow">
@@ -326,8 +415,6 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 }

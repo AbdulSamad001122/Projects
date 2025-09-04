@@ -5,6 +5,12 @@ import { ClientProvider } from "@/contexts/ClientContext";
 import { ItemProvider } from "@/contexts/ItemContext";
 import { InvoiceProvider } from "@/contexts/InvoiceContext";
 import { Analytics } from "@vercel/analytics/next";
+import {
+  SidebarProvider,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import SidebarAwareNavbar from "@/components/SidebarAwareNavbar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,9 +39,17 @@ export default function RootLayout({ children }) {
             <ClientProvider>
               <ItemProvider>
                 <InvoiceProvider>
-                  <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
-                    {children}
-                  </main>
+                  <SidebarProvider>
+                    <AppSidebar />
+                    <SidebarInset>
+                      <div className="flex flex-col min-h-screen">
+                        <SidebarAwareNavbar />
+                        <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+                          {children}
+                        </main>
+                      </div>
+                    </SidebarInset>
+                  </SidebarProvider>
                   <Analytics />
                 </InvoiceProvider>
               </ItemProvider>

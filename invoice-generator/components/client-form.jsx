@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import LoadingButton from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,13 +27,13 @@ export function ClientForm({ onClose, onClientAdded }) {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
+    if (!formData.name || !formData.name.trim()) {
       newErrors.name = "Name is required";
     }
 
-    if (!formData.email.trim()) {
+    if (!formData.email || !formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = "Please enter a valid email address";
     }
 
@@ -169,13 +168,14 @@ export function ClientForm({ onClose, onClientAdded }) {
               >
                 Cancel
               </Button>
-              <LoadingButton
+              <Button
                 type="submit"
                 className="flex-1"
-                errorMessage="Failed to create client. Please check your data and try again."
+                disabled={loading || !formData.name || !formData.name.trim() || !formData.email || !formData.email.trim()}
               >
+                {loading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
                 Create Client
-              </LoadingButton>
+              </Button>
             </div>
           </form>
         </CardContent>

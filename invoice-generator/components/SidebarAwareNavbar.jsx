@@ -48,12 +48,16 @@ export default function SidebarAwareNavbar({ className }) {
               </div>
             ) : (
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" asChild>
-                  <Link href="/signin">Sign In</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/signup">Sign Up</Link>
-                </Button>
+                <Link href="/signin">
+                  <Button variant="ghost">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button>
+                    Sign Up
+                  </Button>
+                </Link>
               </div>
             )}
           </div>

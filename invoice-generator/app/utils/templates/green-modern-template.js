@@ -22,7 +22,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#10B981",
     padding: 20,
     marginBottom: 20,
-    borderRadius: 8,
   },
   headerContent: {
     flexDirection: "row",
@@ -37,8 +36,7 @@ const styles = StyleSheet.create({
   companyLogo: {
     width: 50,
     height: 50,
-    borderRadius: 25,
-    objectFit: "contain",
+    borderRadius: 25, // Make logo circular
   },
   companyInfo: {
     flexDirection: "column",
@@ -76,12 +74,12 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 10,
     fontSize: 9,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "center",
     minWidth: 50,
+    borderRadius: 12, // More rounded corners
   },
   statusPaid: {
     backgroundColor: "#059669",
@@ -102,14 +100,12 @@ const styles = StyleSheet.create({
     width: "45%",
     padding: 15,
     backgroundColor: "#F0FDF4",
-    borderRadius: 6,
     borderLeft: "4px solid #10B981",
   },
   fromSection: {
     width: "45%",
     padding: 15,
     backgroundColor: "#F0FDF4",
-    borderRadius: 6,
     borderLeft: "4px solid #10B981",
   },
   sectionTitle: {
@@ -129,7 +125,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     padding: 10,
     backgroundColor: "#F9FAFB",
-    borderRadius: 6,
   },
   dateItem: {
     flexDirection: "column",
@@ -148,7 +143,6 @@ const styles = StyleSheet.create({
   // Table styles
   table: {
     marginBottom: 20,
-    borderRadius: 6,
     overflow: "hidden",
   },
   tableHeader: {
@@ -253,7 +247,6 @@ const styles = StyleSheet.create({
     width: 220,
     backgroundColor: "#F9FAFB",
     padding: 15,
-    borderRadius: 6,
   },
   totalRow: {
     flexDirection: "row",
@@ -276,7 +269,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginTop: 8,
-    borderRadius: 4,
   },
   grandTotalLabel: {
     fontSize: 12,
@@ -299,14 +291,12 @@ const styles = StyleSheet.create({
     width: "48%",
     padding: 15,
     backgroundColor: "#F0FDF4",
-    borderRadius: 6,
     borderLeft: "4px solid #10B981",
   },
   paymentSection: {
     width: "48%",
     padding: 15,
     backgroundColor: "#F0FDF4",
-    borderRadius: 6,
     borderLeft: "4px solid #10B981",
     alignItems: "flex-end",
     textAlign: "right",
@@ -340,7 +330,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     padding: 15,
     backgroundColor: "#F0FDF4",
-    borderRadius: 6,
   },
   termsTitle: {
     fontSize: 12,
@@ -514,11 +503,11 @@ const GreenModernTemplate = ({ invoiceData }) => {
                   : styles.itemNameHeaderWide,
               ]}
             >
-              Description
+              Item Name
             </Text>
             {invoiceData.includeDescription && (
               <Text style={[styles.tableHeaderCell, styles.descriptionHeader]}>
-                Details
+                Description
               </Text>
             )}
             <Text

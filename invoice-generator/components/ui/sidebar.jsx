@@ -492,7 +492,7 @@ function SidebarMenuButton({
   const handleClick = async (e) => {
     if (isLoading || loading) return
     
-    if (onClick) {
+    if (onClick && !loading) {
       setIsLoading(true)
       try {
         await onClick(e)

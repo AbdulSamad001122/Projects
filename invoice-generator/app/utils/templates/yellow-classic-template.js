@@ -33,8 +33,7 @@ const styles = StyleSheet.create({
   companyLogo: {
     width: 50,
     height: 50,
-    borderRadius: 25,
-    objectFit: "contain",
+    borderRadius: 25, // Make logo circular
   },
   companyName: {
     fontSize: 16,
@@ -72,13 +71,13 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
     fontSize: 10,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "center",
     minWidth: 60,
     marginTop: 5,
+    borderRadius: 12, // More rounded corners
   },
   statusPaid: {
     backgroundColor: "#10B981",
@@ -442,11 +441,11 @@ const YellowClassicTemplate = ({ invoiceData }) => {
                   : styles.itemNameHeaderWide,
               ]}
             >
-              Description
+              Item Name
             </Text>
             {invoiceData.includeDescription && (
               <Text style={[styles.tableHeaderCell, styles.descriptionHeader]}>
-                Price
+                Description
               </Text>
             )}
             <Text
@@ -467,7 +466,7 @@ const YellowClassicTemplate = ({ invoiceData }) => {
                   : styles.priceHeaderWide,
               ]}
             >
-              SubTotal
+              Price
             </Text>
             <Text
               style={[
@@ -497,7 +496,7 @@ const YellowClassicTemplate = ({ invoiceData }) => {
                 </Text>
                 {invoiceData.includeDescription && (
                   <Text style={[styles.tableCell, styles.descriptionCell]}>
-                    ${(item.rate || 0).toFixed(2)}
+                    {item.description || ""}
                   </Text>
                 )}
                 <Text
@@ -547,7 +546,7 @@ const YellowClassicTemplate = ({ invoiceData }) => {
               </Text>
               {invoiceData.includeDescription && (
                 <Text style={[styles.tableCell, styles.descriptionCell]}>
-                  $1,200
+                  Professional logo design
                 </Text>
               )}
               <Text
@@ -589,12 +588,12 @@ const YellowClassicTemplate = ({ invoiceData }) => {
           <View style={styles.totalsSection}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal:</Text>
-              <Text style={styles.totalValue}>
-                ${subtotal.toFixed(2)}
-              </Text>
+              <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Discount ({discountRate || 0}%):</Text>
+              <Text style={styles.totalLabel}>
+                Discount ({discountRate || 0}%):
+              </Text>
               <Text style={styles.totalValue}>
                 {discountRate > 0 ? `-$${discountAmount.toFixed(2)}` : "$0.00"}
               </Text>

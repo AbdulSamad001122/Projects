@@ -5,6 +5,7 @@
 import BlueModernTemplate from "./blue-modern-template";
 import YellowClassicTemplate from "./yellow-classic-template";
 import GreenModernTemplate from "./green-modern-template";
+import GreenClassicTemplate from "./green-classic-template";
 
 // Template registry - add new templates here
 export const INVOICE_TEMPLATES = {
@@ -28,6 +29,13 @@ export const INVOICE_TEMPLATES = {
     description: "Fresh and vibrant green-themed template",
     component: GreenModernTemplate,
     preview: "/templates/green-modern-preview.png",
+  },
+  "green-classic": {
+    id: "green-classic",
+    name: "Green Classic",
+    description: "Classic green template with professional layout",
+    component: GreenClassicTemplate,
+    preview: "/templates/green-classic-preview.png",
   },
 };
 

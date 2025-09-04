@@ -80,12 +80,13 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
   const handleCreateClient = async (e) => {
     e.preventDefault();
     if (!clientForm.name.trim()) return;
+    if (!clientForm.email.trim()) return;
 
     setIsSubmitting(true);
     try {
       const newClient = await addClient({
-        name: clientForm.name,
-        email: clientForm.email || null,
+        name: clientForm.name.trim(),
+        email: clientForm.email.trim(),
       });
 
       console.log("Created client:", newClient);
@@ -215,6 +216,21 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => router.push("/company-setup")}
+                  className="w-full justify-start mx-2 my-1 px-4 py-3 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-lg hover:shadow-blue-100/50 dark:hover:shadow-blue-900/20 transition-all duration-200 border border-transparent"
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white shadow-lg">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <span className="font-medium text-sm dark:text-white">
+                      Company Info
+                    </span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -262,7 +278,7 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email" className="dark:text-gray-200">
-                        Email Address
+                        Email Address *
                       </Label>
                       <Input
                         id="email"
@@ -271,7 +287,8 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
                         onChange={(e) =>
                           handleInputChange("email", e.target.value)
                         }
-                        placeholder="client@example.com (optional)"
+                        placeholder="client@example.com"
+                        required
                       />
                     </div>
                   </div>
@@ -286,7 +303,7 @@ export function AppSidebar({ selectedClientId, onClientSelect, onAddClient }) {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isSubmitting || !clientForm.name.trim()}
+                      disabled={isSubmitting || !clientForm.name.trim() || !clientForm.email.trim()}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       {isSubmitting ? (

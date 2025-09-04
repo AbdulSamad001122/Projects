@@ -22,8 +22,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E40AF",
     height: 120,
     marginBottom: 20,
-    borderBottomLeftRadius: 50,
-    borderBottomRightRadius: 50,
     position: "relative",
   },
   headerContent: {
@@ -56,8 +54,7 @@ const styles = StyleSheet.create({
   companyLogo: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    objectFit: "contain",
+    borderRadius: 30, // Make logo circular
   },
   invoiceTitle: {
     fontSize: 36,
@@ -78,12 +75,12 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
     fontSize: 10,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "center",
     minWidth: 60,
+    borderRadius: 12, // More rounded corners
   },
   statusPaid: {
     backgroundColor: "#10B981",

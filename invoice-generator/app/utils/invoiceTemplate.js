@@ -415,13 +415,16 @@ const InvoicePDF = ({ invoiceData }) => {
             <Text style={styles.text}>
               {clientEmail || "client@example.com"}
             </Text>
-            {clientCustomFields.slice(0, 10).map((field, index) => (
-              field.name && field.value && (
-                <Text key={index} style={styles.text}>
-                  {field.name.substring(0, 50)}: {field.value.substring(0, 100)}
-                </Text>
-              )
-            ))}
+            {clientCustomFields.slice(0, 10).map(
+              (field, index) =>
+                field.name &&
+                field.value && (
+                  <Text key={index} style={styles.text}>
+                    {field.name.substring(0, 50)}:{" "}
+                    {field.value.substring(0, 100)}
+                  </Text>
+                )
+            )}
           </View>
           <View style={styles.fromSection}>
             <Text style={styles.sectionTitle}>From:</Text>
@@ -429,13 +432,16 @@ const InvoicePDF = ({ invoiceData }) => {
             <Text style={styles.text}>
               {companyEmail || "company@example.com"}
             </Text>
-            {companyCustomFields.slice(0, 10).map((field, index) => (
-              field.name && field.value && (
-                <Text key={index} style={styles.text}>
-                  {field.name.substring(0, 50)}: {field.value.substring(0, 100)}
-                </Text>
-              )
-            ))}
+            {companyCustomFields.slice(0, 10).map(
+              (field, index) =>
+                field.name &&
+                field.value && (
+                  <Text key={index} style={styles.text}>
+                    {field.name.substring(0, 50)}:{" "}
+                    {field.value.substring(0, 100)}
+                  </Text>
+                )
+            )}
           </View>
         </View>
 

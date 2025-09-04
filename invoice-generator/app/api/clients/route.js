@@ -90,15 +90,20 @@ export async function POST(request) {
       );
     }
 
-    // Validate email format if provided
-    if (email && email.trim() !== "") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return NextResponse.json(
-          { error: "Invalid email format" },
-          { status: 400 }
-        );
-      }
+    if (!email || email.trim() === "") {
+      return NextResponse.json(
+        { error: "Client email is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      );
     }
 
     // Use cached user lookup to reduce database queries
@@ -108,7 +113,7 @@ export async function POST(request) {
     const newClient = await prisma.client.create({
       data: {
         name: name.trim(),
-        email: email?.trim() || null,
+        email: email.trim(),
         userId: dbUser.id, // Use the database user's id
         autoRenumberInvoices: true, // Default to auto-renumbering enabled
       },

@@ -56,7 +56,7 @@ function Button({
       return;
     }
 
-    if (onClick) {
+    if (onClick && !loading) {
       setIsLoading(true);
       try {
         await onClick(e);

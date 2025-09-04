@@ -4,13 +4,6 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ItemManagement from "@/components/item-management";
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import SidebarAwareNavbar from "@/components/SidebarAwareNavbar";
 
 export default function ItemsPage() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -31,14 +24,8 @@ export default function ItemsPage() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <SidebarAwareNavbar />
-        <div className="min-h-screen bg-gray-50 p-4">
-          <ItemManagement />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <ItemManagement />
+    </div>
   );
 }

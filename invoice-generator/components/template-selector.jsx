@@ -33,7 +33,7 @@ const TemplateSelector = ({
 
   const handleImageClick = (e, template) => {
     e.stopPropagation(); // Prevent template selection
-    const imageSrc = `/${template.id === 'blue-modern' ? 'blue-theme.jpg' : template.id === 'yellow-classic' ? 'yellow-theme.jpg' : template.id === 'green-modern' ? 'green-theme.jpg' : 'default-theme.jpg'}`;
+    const imageSrc = `/${template.id === 'blue-modern' ? 'blue-theme.jpg' : template.id === 'yellow-classic' ? 'yellow-theme.jpg' : template.id === 'green-modern' ? 'green-theme.jpg' : template.id === 'green-classic' ? 'green_classic-theme.jpg' : 'blue-theme.jpg'}`;
     window.open(imageSrc, '_blank');
   };
 
@@ -61,6 +61,7 @@ const TemplateSelector = ({
           selected: 'border-yellow-500 ring-yellow-200'
         };
       case 'green-modern':
+      case 'green-classic':
         return {
           bg: 'bg-green-50',
           border: 'border-green-200',
@@ -209,7 +210,7 @@ const TemplateSelector = ({
                             title="Click to view full size image in new tab"
                           >
                             <Image
-                              src={`/${template.id === 'blue-modern' ? 'blue-theme.jpg' : template.id === 'yellow-classic' ? 'yellow-theme.jpg' : template.id === 'green-modern' ? 'green-theme.jpg' : 'default-theme.jpg'}`}
+                              src={`/${template.id === 'blue-modern' ? 'blue-theme.jpg' : template.id === 'yellow-classic' ? 'yellow-theme.jpg' : template.id === 'green-modern' ? 'green-theme.jpg' : template.id === 'green-classic' ? 'green_classic-theme.jpg' : 'blue-theme.jpg'}`}
                               alt={`${template.name} template preview`}
                               fill
                               className="object-contain p-4 transition-transform duration-700 group-hover:scale-110 pointer-events-none"

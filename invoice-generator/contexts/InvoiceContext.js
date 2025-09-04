@@ -293,6 +293,32 @@ export function InvoiceProvider({ children }) {
     }
   }, []);
 
+  const duplicateInvoice = useCallback(async (invoiceId, clientId) => {
+    try {
+      const response = await axios.post(`/api/invoices/duplicate`, { invoiceId });
+      const duplicatedInvoice = response.data.invoice;
+      
+      // Add the duplicated invoice to the beginning of the list
+      setInvoicesByClient(prev => {
+        const existingInvoices = prev[clientId] || [];
+        return {
+          ...prev,
+          [clientId]: [duplicatedInvoice, ...existingInvoices]
+        };
+      });
+      
+      setLastFetch(prev => ({
+        ...prev,
+        [clientId]: Date.now()
+      }));
+      
+      return duplicatedInvoice;
+    } catch (err) {
+      console.error('Error duplicating invoice:', err);
+      throw err;
+    }
+  }, []);
+
   const deleteInvoice = useCallback(async (invoiceId, clientId) => {
     try {
       await axios.delete(`/api/invoices?id=${invoiceId}`);
@@ -352,6 +378,7 @@ export function InvoiceProvider({ children }) {
     createInvoice,
     updateInvoice,
     updateInvoiceStatus,
+    duplicateInvoice,
     deleteInvoice,
     getInvoicesForClient,
     getInvoiceById,

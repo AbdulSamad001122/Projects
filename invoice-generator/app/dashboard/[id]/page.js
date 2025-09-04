@@ -23,13 +23,7 @@ import {
   User,
   Mail,
 } from "lucide-react";
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import SidebarAwareNavbar from "@/components/SidebarAwareNavbar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import InvoiceForm from "@/components/invoice-form";
 import InvoiceList from "@/components/invoice-list";
 import axios from "axios";
@@ -108,69 +102,41 @@ export default function ClientDashboard() {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <AppSidebar
-          selectedClientId={selectedClientId}
-          onClientSelect={handleClientSelect}
-          onAddClient={handleAddClient}
-        />
-        <SidebarInset>
-          <SidebarAwareNavbar />
-          <div className="container mx-auto py-8">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-24 bg-gray-200 dark:bg-gray-700 rounded"
-                  ></div>
-                ))}
-              </div>
-            </div>
+      <div className="container mx-auto py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="h-24 bg-gray-200 dark:bg-gray-700 rounded"
+              ></div>
+            ))}
           </div>
-        </SidebarInset>
-      </SidebarProvider>
+        </div>
+      </div>
     );
   }
 
   if (showInvoiceForm) {
     return (
-      <SidebarProvider>
-        <AppSidebar
-          selectedClientId={selectedClientId}
-          onClientSelect={handleClientSelect}
-          onAddClient={handleAddClient}
+      <div className="container mx-auto py-8">
+        <InvoiceForm
+          invoice={editingInvoice}
+          onInvoiceCreated={handleInvoiceCreated}
+          onCancel={() => {
+            setShowInvoiceForm(false);
+            setEditingInvoice(null);
+          }}
+          preselectedClient={client}
         />
-        <SidebarInset>
-          <SidebarAwareNavbar />
-          <div className="container mx-auto py-8">
-            <InvoiceForm
-              invoice={editingInvoice}
-              onInvoiceCreated={handleInvoiceCreated}
-              onCancel={() => {
-                setShowInvoiceForm(false);
-                setEditingInvoice(null);
-              }}
-              preselectedClient={client}
-            />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        selectedClientId={selectedClientId}
-        onClientSelect={handleClientSelect}
-        onAddClient={handleAddClient}
-      />
-      <SidebarInset>
-        <SidebarAwareNavbar />
-        <div className="container mx-auto py-8 pt-20 space-y-8 px-6">
+    <div className="container mx-auto py-8 pt-20 space-y-8 px-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -212,7 +178,5 @@ export default function ClientDashboard() {
             />
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
   );
 }

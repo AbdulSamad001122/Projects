@@ -130,6 +130,7 @@ export default function InvoiceForm({
 
   const [errors, setErrors] = useState({});
   const [isLoadingAutoData, setIsLoadingAutoData] = useState(false);
+  const [isLoadingCompanyProfile, setIsLoadingCompanyProfile] = useState(false);
   const [showStatusOnPDF, setShowStatusOnPDF] = useState(false);
 
   // Auto-generate invoice number based on client's previous invoices
@@ -188,6 +189,37 @@ export default function InvoiceForm({
 
     loadAvailableItems();
   }, [preselectedClient, getItemsForClient]);
+
+  // Auto-fetch company profile data for new invoices
+  useEffect(() => {
+    const fetchCompanyProfile = async () => {
+      // Only fetch for new invoices (not when editing existing ones)
+      if (invoice) return;
+      
+      setIsLoadingCompanyProfile(true);
+      try {
+        const response = await fetch('/api/company-profile');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setFormData(prev => ({
+              ...prev,
+              companyName: result.data.companyName || prev.companyName,
+              companyEmail: result.data.companyEmail || prev.companyEmail,
+              companyLogo: result.data.companyLogo || prev.companyLogo,
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching company profile:', error);
+        // Silently fail - user can still manually enter company data
+      } finally {
+        setIsLoadingCompanyProfile(false);
+      }
+    };
+
+    fetchCompanyProfile();
+  }, [invoice]); // Only run when invoice prop changes
 
   const validateForm = () => {
     const newErrors = {};
@@ -671,12 +703,22 @@ export default function InvoiceForm({
                   <Label htmlFor="companyName">Company Name *</Label>
                   <Input
                     id="companyName"
-                    value={formData.companyName}
+                    value={
+                      isLoadingCompanyProfile ? "Generating..." : formData.companyName
+                    }
                     onChange={(e) =>
                       handleInputChange("companyName", e.target.value)
                     }
-                    placeholder="Your Company Name"
-                    className={errors.companyName ? "border-red-500" : ""}
+                    placeholder={
+                      isLoadingCompanyProfile
+                        ? "Generating company name..."
+                        : "Your Company Name"
+                    }
+                    className={`${errors.companyName ? "border-red-500" : ""} ${
+                      isLoadingCompanyProfile ? "bg-gray-100 text-gray-500" : ""
+                    }`}
+                    disabled={isLoadingCompanyProfile}
+                    readOnly={isLoadingCompanyProfile}
                   />
                   {errors.companyName && (
                     <p className="text-red-500 text-sm mt-1">
@@ -690,12 +732,22 @@ export default function InvoiceForm({
                   <Input
                     id="companyEmail"
                     type="email"
-                    value={formData.companyEmail}
+                    value={
+                      isLoadingCompanyProfile ? "Generating..." : formData.companyEmail
+                    }
                     onChange={(e) =>
                       handleInputChange("companyEmail", e.target.value)
                     }
-                    placeholder="company@example.com"
-                    className={errors.companyEmail ? "border-red-500" : ""}
+                    placeholder={
+                      isLoadingCompanyProfile
+                        ? "Generating company email..."
+                        : "company@example.com"
+                    }
+                    className={`${errors.companyEmail ? "border-red-500" : ""} ${
+                      isLoadingCompanyProfile ? "bg-gray-100 text-gray-500" : ""
+                    }`}
+                    disabled={isLoadingCompanyProfile}
+                    readOnly={isLoadingCompanyProfile}
                   />
                   {errors.companyEmail && (
                     <p className="text-red-500 text-sm mt-1">
@@ -710,22 +762,29 @@ export default function InvoiceForm({
                   <Label htmlFor="companyLogo" className="dark:text-gray-200">
                     Company Logo
                   </Label>
-                  <Input
-                    id="companyLogo"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          handleInputChange("companyLogo", event.target.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
+                  {isLoadingCompanyProfile ? (
+                    <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded border">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                      <span className="text-gray-500 text-sm">Generating company logo...</span>
+                    </div>
+                  ) : (
+                    <Input
+                      id="companyLogo"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            handleInputChange("companyLogo", event.target.result);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  )}
                   {formData.companyLogo && (
                     <div className="mt-2">
                       <div className="flex items-center gap-2">
