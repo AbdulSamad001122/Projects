@@ -17,6 +17,11 @@ export async function GET(request) {
     const page = parseInt(searchParams.get("page")) || 1;
     const limit = parseInt(searchParams.get("limit")) || 10; // Default to 10 for invoices
     const offset = (page - 1) * limit;
+    
+    // Search parameters
+    const searchTerm = searchParams.get("search");
+    const searchDate = searchParams.get("date");
+    const searchStatus = searchParams.get("status");
 
     if (!clientId) {
       return NextResponse.json(
@@ -28,20 +33,77 @@ export async function GET(request) {
     // Use cached user lookup to reduce database queries
     const user = await getCachedUser(userId);
 
+    // Build where clause with search filters
+    const whereClause = {
+      clientId: clientId,
+      userId: user.id,
+    };
+
+    // Add search filters to where clause
+    if (searchTerm) {
+      whereClause.data = {
+        path: ["invoiceNumber"],
+        string_contains: searchTerm
+      };
+    }
+
+    if (searchDate) {
+      // For date search, we need to check both invoiceDate and issueDate fields
+      const dateConditions = [];
+      
+      dateConditions.push({
+        data: {
+          path: ["invoiceDate"],
+          equals: searchDate
+        }
+      });
+      
+      dateConditions.push({
+        data: {
+          path: ["issueDate"],
+          equals: searchDate
+        }
+      });
+      
+      if (whereClause.OR) {
+        whereClause.AND = [{ OR: whereClause.OR }, { OR: dateConditions }];
+        delete whereClause.OR;
+      } else {
+        whereClause.OR = dateConditions;
+      }
+    }
+
+    if (searchStatus) {
+      const statusCondition = {
+        data: {
+          path: ["status"],
+          equals: searchStatus
+        }
+      };
+      
+      if (whereClause.data && whereClause.data.path) {
+        // If we already have a data condition, combine them with AND
+        whereClause.AND = [
+          { data: whereClause.data },
+          statusCondition
+        ];
+        delete whereClause.data;
+      } else {
+        whereClause.data = {
+          path: ["status"],
+          equals: searchStatus
+        };
+      }
+    }
+
     // Get total count for pagination metadata
     const totalCount = await prisma.invoice.count({
-      where: {
-        clientId: clientId,
-        userId: user.id,
-      },
+      where: whereClause,
     });
 
-    // Fetch invoices for the specific client with pagination
+    // Fetch invoices for the specific client with pagination and search
     const invoices = await prisma.invoice.findMany({
-      where: {
-        clientId: clientId,
-        userId: user.id,
-      },
+      where: whereClause,
       orderBy: {
         createdAt: "desc",
       },

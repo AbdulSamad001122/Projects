@@ -29,6 +29,9 @@ model User {
   companyName  String?  @map("company_name")
   companyEmail String?  @map("company_email")
   companyLogo  String?  @map("company_logo")
+  bankName     String?  @map("bank_name")
+  bankAccount  String?  @map("bank_account")
+  defaultDueDays Int?   @map("default_due_days")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

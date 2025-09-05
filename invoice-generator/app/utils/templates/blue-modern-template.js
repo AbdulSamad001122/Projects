@@ -397,6 +397,7 @@ const BlueModernTemplate = ({ invoiceData }) => {
           </View>
           {companyLogo && (
             <View style={styles.headerCenter}>
+              {console.log('🖼️ PDF Template - Rendering logo with URL:', companyLogo)}
               <Image
                 src={companyLogo}
                 style={styles.companyLogo}

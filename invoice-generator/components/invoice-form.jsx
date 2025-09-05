@@ -35,6 +35,7 @@ import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
 import { useItems } from "@/contexts/ItemContext";
 import { getTemplateComponent, getDefaultTemplate } from "@/app/utils/templates";
+import { prepareInvoiceDataForPDF } from "@/app/utils/imageToBase64";
 import TemplateSelector from "@/components/template-selector";
 import axios from "axios";
 
@@ -132,6 +133,7 @@ export default function InvoiceForm({
   const [isLoadingAutoData, setIsLoadingAutoData] = useState(false);
   const [isLoadingCompanyProfile, setIsLoadingCompanyProfile] = useState(false);
   const [showStatusOnPDF, setShowStatusOnPDF] = useState(false);
+  const [defaultDueDays, setDefaultDueDays] = useState(30);
 
   // Auto-generate invoice number based on client's previous invoices
   useEffect(() => {
@@ -201,12 +203,25 @@ export default function InvoiceForm({
         const response = await fetch('/api/company-profile');
         if (response.ok) {
           const result = await response.json();
+          console.log('Company profile API response:', result);
           if (result.success && result.data) {
+            const companyDefaultDueDays = result.data.defaultDueDays || 30;
+            console.log('Setting defaultDueDays to:', companyDefaultDueDays);
+            setDefaultDueDays(companyDefaultDueDays);
+            
+            const issueDate = new Date();
+            const calculatedDueDate = new Date(issueDate);
+            calculatedDueDate.setDate(calculatedDueDate.getDate() + companyDefaultDueDays);
+            console.log('Calculated due date:', calculatedDueDate.toISOString().split('T')[0]);
+            
             setFormData(prev => ({
               ...prev,
               companyName: result.data.companyName || prev.companyName,
               companyEmail: result.data.companyEmail || prev.companyEmail,
               companyLogo: result.data.companyLogo || prev.companyLogo,
+              bankName: result.data.bankName || prev.bankName,
+              bankAccount: result.data.bankAccount || prev.bankAccount,
+              dueDate: prev.dueDate || calculatedDueDate.toISOString().split('T')[0],
             }));
           }
         }
@@ -324,7 +339,23 @@ export default function InvoiceForm({
   };
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      
+      // Auto-calculate due date when issue date changes
+      if (field === 'issueDate' && value && defaultDueDays) {
+        console.log('Issue date changed to:', value, 'defaultDueDays:', defaultDueDays);
+        const issueDate = new Date(value);
+        const calculatedDueDate = new Date(issueDate);
+        calculatedDueDate.setDate(calculatedDueDate.getDate() + defaultDueDays);
+        const dueDateString = calculatedDueDate.toISOString().split('T')[0];
+        console.log('Auto-calculated due date:', dueDateString);
+        newData.dueDate = dueDateString;
+      }
+      
+      return newData;
+    });
+    
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
@@ -466,9 +497,13 @@ export default function InvoiceForm({
 
     try {
       const invoiceData = generateInvoiceData();
+      // Convert company logo URL to base64 for PDF generation
+      console.log('🚀 About to prepare PDF data with logo:', invoiceData.companyLogo);
+      const preparedInvoiceData = await prepareInvoiceDataForPDF(invoiceData);
+      console.log('🚀 PDF data prepared, logo is now:', preparedInvoiceData.companyLogo?.substring(0, 50) + '...');
       const TemplateComponent = getTemplateComponent(formData.selectedTemplate);
       const blob = await pdf(
-        <TemplateComponent invoiceData={invoiceData} />
+        <TemplateComponent invoiceData={preparedInvoiceData} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const newWindow = window.open(url, "_blank");
@@ -500,9 +535,13 @@ export default function InvoiceForm({
 
     try {
       const invoiceData = generateInvoiceData();
+      // Convert company logo URL to base64 for PDF generation
+      console.log('🚀 About to prepare PDF data with logo:', invoiceData.companyLogo);
+      const preparedInvoiceData = await prepareInvoiceDataForPDF(invoiceData);
+      console.log('🚀 PDF data prepared, logo is now:', preparedInvoiceData.companyLogo?.substring(0, 50) + '...');
       const TemplateComponent = getTemplateComponent(formData.selectedTemplate);
       const blob = await pdf(
-        <TemplateComponent invoiceData={invoiceData} />
+        <TemplateComponent invoiceData={preparedInvoiceData} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -542,9 +581,11 @@ export default function InvoiceForm({
 
       // Then download the PDF
       const invoiceData = generateInvoiceData();
+      // Convert company logo URL to base64 for PDF generation
+      const preparedInvoiceData = await prepareInvoiceDataForPDF(invoiceData);
       const TemplateComponent = getTemplateComponent(formData.selectedTemplate);
       const blob = await pdf(
-        <TemplateComponent invoiceData={invoiceData} />
+        <TemplateComponent invoiceData={preparedInvoiceData} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

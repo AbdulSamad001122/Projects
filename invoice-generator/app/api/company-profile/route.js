@@ -26,6 +26,9 @@ export async function GET(request) {
         companyName: true,
         companyEmail: true,
         companyLogo: true,
+        bankName: true,
+        bankAccount: true,
+        defaultDueDays: true,
       },
     });
 
@@ -39,6 +42,9 @@ export async function GET(request) {
         companyName: user.companyName,
         companyEmail: user.companyEmail,
         companyLogo: user.companyLogo,
+        bankName: user.bankName,
+        bankAccount: user.bankAccount,
+        defaultDueDays: user.defaultDueDays,
         hasCompanyProfile: !!(user.companyName && user.companyEmail),
       },
     });
@@ -61,7 +67,9 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { companyName, companyEmail, companyLogo } = body;
+    const { companyName, companyEmail, companyLogo, bankName, bankAccount, defaultDueDays, updateOption = "fromNow" } = body;
+    
+    console.log('Company profile update request:', { updateOption, companyName, companyEmail });
 
     // Validate required fields
     if (!companyName || !companyEmail) {
@@ -92,22 +100,82 @@ export async function POST(request) {
         companyName: companyName.trim(),
         companyEmail: companyEmail.trim().toLowerCase(),
         companyLogo: companyLogo || null,
+        bankName: bankName ? bankName.trim() : null,
+        bankAccount: bankAccount ? bankAccount.trim() : null,
+        defaultDueDays: defaultDueDays && String(defaultDueDays).trim() !== '' ? parseInt(defaultDueDays) : null,
       },
       select: {
         id: true,
         companyName: true,
         companyEmail: true,
         companyLogo: true,
+        bankName: true,
+        bankAccount: true,
+        defaultDueDays: true,
       },
     });
 
+    // If updateOption is "allInvoices", update all existing invoices with new company info
+    let updatedInvoicesCount = 0;
+    if (updateOption === "allInvoices") {
+      console.log('Updating all invoices with new company info...');
+      // Get all invoices for this user
+      const invoices = await prisma.invoice.findMany({
+        where: {
+          client: {
+            userId: dbUser.id,
+          },
+        },
+        select: {
+          id: true,
+          data: true,
+        },
+      });
+      
+      console.log(`Found ${invoices.length} invoices to update`);
+
+      // Update each invoice's data with new company information
+      for (const invoice of invoices) {
+        const invoiceData = invoice.data;
+
+        // Update company information in invoice data
+        if (invoiceData && typeof invoiceData === "object") {
+          const updatedInvoiceData = {
+            ...invoiceData,
+            companyName: companyName.trim(),
+            companyEmail: companyEmail.trim().toLowerCase(),
+            companyLogo: companyLogo || null,
+            bankName: bankName ? bankName.trim() : null,
+            bankAccount: bankAccount ? bankAccount.trim() : null,
+            defaultDueDays: defaultDueDays && String(defaultDueDays).trim() !== '' ? parseInt(defaultDueDays) : null,
+          };
+
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: { data: updatedInvoiceData },
+          });
+          
+          updatedInvoicesCount++;
+          console.log(`Updated invoice ${invoice.id} with new company data`);
+        }
+      }
+    }
+    
+
+
     return NextResponse.json({
       success: true,
-      message: "Company profile updated successfully",
+      message: updateOption === "allInvoices" ? 
+        `Company profile updated successfully. Updated ${updatedInvoicesCount} existing invoices.` : 
+        "Company profile updated successfully",
       data: {
         companyName: updatedUser.companyName,
         companyEmail: updatedUser.companyEmail,
         companyLogo: updatedUser.companyLogo,
+        bankName: updatedUser.bankName,
+        bankAccount: updatedUser.bankAccount,
+        defaultDueDays: updatedUser.defaultDueDays,
+        updatedInvoicesCount: updatedInvoicesCount,
       },
     });
   } catch (error) {

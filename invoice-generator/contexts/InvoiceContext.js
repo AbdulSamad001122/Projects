@@ -19,6 +19,7 @@ export function InvoiceProvider({ children }) {
   const [invoicesByClient, setInvoicesByClient] = useState({});
   const [loading, setLoading] = useState({});
   const [loadingMore, setLoadingMore] = useState({});
+  const [searchLoading, setSearchLoading] = useState({});
   const [error, setError] = useState({});
   const [lastFetch, setLastFetch] = useState({});
   const [pagination, setPagination] = useState({});
@@ -59,11 +60,14 @@ export function InvoiceProvider({ children }) {
     });
   }, []);
 
-  const fetchInvoices = useCallback(async (clientId, force = false, reset = false) => {
+  const fetchInvoices = useCallback(async (clientId, force = false, reset = false, searchParams = {}) => {
     // Skip if not authenticated or still loading
     if (!isLoaded || !user || !clientId) {
       return;
     }
+
+    // Always fetch when search parameters are provided
+    const hasSearchParams = Object.keys(searchParams).some(key => searchParams[key]);
 
     // Check if we have fresh data and don't need to force refresh
     let lastFetchTime = null;
@@ -72,7 +76,7 @@ export function InvoiceProvider({ children }) {
       return prev;
     });
     
-    if (!force && !reset && lastFetchTime && Date.now() - lastFetchTime < CACHE_DURATION) {
+    if (!force && !reset && !hasSearchParams && lastFetchTime && Date.now() - lastFetchTime < CACHE_DURATION) {
       return;
     }
 
@@ -95,14 +99,30 @@ export function InvoiceProvider({ children }) {
         return prev;
       });
       
-      if (isInitialLoad) {
+      // Use different loading states for search vs initial load
+      if (hasSearchParams) {
+        setSearchLoading(prev => ({ ...prev, [clientId]: true }));
+      } else if (isInitialLoad) {
         setLoading(prev => ({ ...prev, [clientId]: true }));
       }
       
       setError(prev => ({ ...prev, [clientId]: null }));
       
       const page = reset ? 1 : currentPagination.page;
-      const response = await axios.get(`/api/invoices?clientId=${clientId}&page=${page}&limit=${currentPagination.limit}`);
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams({
+        clientId,
+        page: page.toString(),
+        limit: currentPagination.limit.toString()
+      });
+      
+      // Add search parameters if provided
+      if (searchParams.search) queryParams.append('search', searchParams.search);
+      if (searchParams.date) queryParams.append('date', searchParams.date);
+      if (searchParams.status) queryParams.append('status', searchParams.status);
+      
+      const response = await axios.get(`/api/invoices?${queryParams.toString()}`);
       
       const newInvoices = response.data.invoices || [];
       
@@ -151,6 +171,7 @@ export function InvoiceProvider({ children }) {
       // Keep existing invoices on error to avoid empty state
     } finally {
       setLoading(prev => ({ ...prev, [clientId]: false }));
+      setSearchLoading(prev => ({ ...prev, [clientId]: false }));
     }
   }, [isLoaded, user, CACHE_DURATION]);
 
@@ -371,6 +392,7 @@ export function InvoiceProvider({ children }) {
     invoicesByClient,
     loading,
     loadingMore,
+    searchLoading,
     error,
     pagination,
     fetchInvoices,

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import LoadingButton from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { X, Upload, Building2, ImageIcon, Trash2 } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 
@@ -22,6 +23,9 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
     companyName: "",
     companyEmail: "",
     companyLogo: "",
+    bankName: "",
+    bankAccount: "",
+    defaultDueDays: "",
   });
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -29,6 +33,7 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [initialLoading, setInitialLoading] = useState(!initialData);
+  const [updateOption, setUpdateOption] = useState("fromNow");
 
   // Initialize form data with initialData or fetch from API
   useEffect(() => {
@@ -38,6 +43,9 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
         companyName: initialData.companyName || "",
         companyEmail: initialData.companyEmail || "",
         companyLogo: logoUrl,
+        bankName: initialData.bankName || "",
+        bankAccount: initialData.bankAccount || "",
+        defaultDueDays: initialData.defaultDueDays ? initialData.defaultDueDays.toString() : "",
       });
       setLogoPreview(logoUrl);
       setInitialLoading(false);
@@ -47,17 +55,29 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
     const fetchCompanyProfile = async () => {
       try {
         const response = await fetch("/api/company-profile");
+        console.log('API Response Status:', response.status);
         if (response.ok) {
           const result = await response.json();
+          console.log('Company Profile API Response:', result);
           if (result.success && result.data) {
+            console.log('defaultDueDays from API:', result.data.defaultDueDays, typeof result.data.defaultDueDays);
+            console.log('All API data:', result.data);
             const logoUrl = result.data.companyLogo || "";
-            setFormData({
+            const formDataToSet = {
               companyName: result.data.companyName || "",
               companyEmail: result.data.companyEmail || "",
               companyLogo: logoUrl,
-            });
+              bankName: result.data.bankName || "",
+              bankAccount: result.data.bankAccount || "",
+              defaultDueDays: result.data.defaultDueDays ? result.data.defaultDueDays.toString() : "",
+            };
+            console.log('Setting form data:', formDataToSet);
+            console.log('defaultDueDays in form data:', formDataToSet.defaultDueDays);
+            setFormData(formDataToSet);
             setLogoPreview(logoUrl);
           }
+        } else {
+          console.log('API Response not OK:', response.status, response.statusText);
         }
       } catch (error) {
         console.error("Error fetching company profile:", error);
@@ -148,6 +168,8 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submission started');
+    console.log('Update option:', updateOption);
 
     if (!validateForm()) {
       return;
@@ -173,21 +195,38 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
         setUploadingLogo(false);
       }
 
+      const requestBody = {
+        companyName: formData.companyName.trim(),
+        companyEmail: formData.companyEmail.trim(),
+        companyLogo: logoUrl || null,
+        bankName: formData.bankName.trim() || null,
+        bankAccount: formData.bankAccount.trim() || null,
+        defaultDueDays: formData.defaultDueDays ? parseInt(formData.defaultDueDays) : null,
+        updateOption: updateOption,
+      };
+      
+      console.log('Sending request to /api/company-profile with body:', requestBody);
+      
       const response = await fetch("/api/company-profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          companyName: formData.companyName.trim(),
-          companyEmail: formData.companyEmail.trim(),
-          companyLogo: logoUrl || null,
-        }),
+        body: JSON.stringify(requestBody),
       });
+      
+      console.log('Response status:', response.status);
+      console.log('Response URL:', response.url);
 
       const result = await response.json();
 
       if (response.ok && result.success) {
+        // Show success message with invoice update info if applicable
+        if (result.message && result.message.includes('Updated')) {
+          console.log('Company profile update result:', result.message);
+          alert(result.message); // Temporary alert to show the result
+        }
+        
         // Use onSave if provided, otherwise fall back to onProfileSaved
         const saveCallback = onSave || onProfileSaved;
         if (saveCallback) {
@@ -225,7 +264,7 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
   }
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} action="/api/company-profile" className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="companyName">Company Name *</Label>
@@ -317,6 +356,74 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
           <p className="text-sm text-gray-500">
             Upload your company logo image. Supported formats: JPG, PNG, GIF. Max size: 5MB.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="bankName">Bank Name (Optional)</Label>
+          <Input
+            id="bankName"
+            type="text"
+            value={formData.bankName}
+            onChange={(e) => handleInputChange("bankName", e.target.value)}
+            placeholder="Enter your bank name"
+            className={errors.bankName ? "border-red-500" : ""}
+          />
+          {errors.bankName && (
+            <p className="text-sm text-red-500">{errors.bankName}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="bankAccount">Bank Account Number (Optional)</Label>
+          <Input
+            id="bankAccount"
+            type="text"
+            value={formData.bankAccount}
+            onChange={(e) => handleInputChange("bankAccount", e.target.value)}
+            placeholder="Enter your bank account number"
+            className={errors.bankAccount ? "border-red-500" : ""}
+          />
+          {errors.bankAccount && (
+            <p className="text-sm text-red-500">{errors.bankAccount}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="defaultDueDays">Default Due Days (Optional)</Label>
+          <Input
+            id="defaultDueDays"
+            type="number"
+            min="1"
+            max="365"
+            value={formData.defaultDueDays}
+            onChange={(e) => handleInputChange("defaultDueDays", e.target.value)}
+            placeholder="Enter default due days (e.g., 7, 30)"
+            className={errors.defaultDueDays ? "border-red-500" : ""}
+          />
+          {errors.defaultDueDays && (
+            <p className="text-sm text-red-500">{errors.defaultDueDays}</p>
+          )}
+          <p className="text-sm text-gray-500">
+            Number of days from invoice date to due date (will auto-populate in invoices)
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <Label>Update Existing Invoices</Label>
+          <RadioGroup value={updateOption} onValueChange={setUpdateOption}>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="fromNow" id="fromNow" />
+              <Label htmlFor="fromNow" className="text-sm font-normal">
+                Apply changes to new invoices only
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+               <RadioGroupItem value="allInvoices" id="allInvoices" />
+               <Label htmlFor="allInvoices" className="text-sm font-normal">
+                 Update all existing invoices
+               </Label>
+             </div>
+          </RadioGroup>
         </div>
       </div>
 

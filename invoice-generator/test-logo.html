@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logo Test</title>
+</head>
+<body>
+    <h1>Logo Conversion Test</h1>
+    <img id="original" style="width: 100px; height: 100px; border: 1px solid red;" />
+    <img id="converted" style="width: 100px; height: 100px; border: 1px solid blue;" />
+    <div id="logs"></div>
+    
+    <script>
+        const cloudinaryUrl = 'https://res.cloudinary.com/dubngcmbl/image/upload/v1757068635/Invoice-generator/xj2fucssu1ziwpase2og.webp';
+        const originalImg = document.getElementById('original');
+        const convertedImg = document.getElementById('converted');
+        const logs = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            logs.innerHTML += '<p>' + message + '</p>';
+        }
+        
+        // Show original image
+        originalImg.src = cloudinaryUrl;
+        originalImg.onload = () => log('✅ Original image loaded successfully');
+        originalImg.onerror = () => log('❌ Original image failed to load');
+        
+        // Test base64 conversion
+        async function testConversion() {
+            try {
+                log('🔄 Starting base64 conversion test...');
+                
+                const response = await fetch(cloudinaryUrl, {
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'image/*'
+                    }
+                });
+                
+                log('📡 Fetch response status: ' + response.status);
+                
+                if (!response.ok) {
+                    log('❌ Fetch failed: ' + response.status + ' ' + response.statusText);
+                    return;
+                }
+                
+                const blob = await response.blob();
+                log('📦 Blob created, size: ' + blob.size + ' bytes, type: ' + blob.type);
+                
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    log('✅ Base64 conversion completed, length: ' + reader.result.length);
+                    convertedImg.src = reader.result;
+                    convertedImg.onload = () => log('✅ Base64 image displayed successfully');
+                    convertedImg.onerror = () => log('❌ Base64 image failed to display');
+                };
+                reader.onerror = () => log('❌ FileReader error');
+                reader.readAsDataURL(blob);
+                
+            } catch (error) {
+                log('❌ Error: ' + error.message);
+            }
+        }
+        
+        testConversion();
+    </script>
+</body>
+</html>

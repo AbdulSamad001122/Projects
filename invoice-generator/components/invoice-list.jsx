@@ -43,6 +43,7 @@ import {
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
 import { getTemplateComponent, DEFAULT_TEMPLATE } from "@/app/utils/templates";
+import { prepareInvoiceDataForPDF } from "@/app/utils/imageToBase64";
 import { useInvoices } from "@/contexts/InvoiceContext";
 
 export default function InvoiceList({ clientId, onEditInvoice }) {
@@ -50,6 +51,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     getInvoicesForClient,
     loading,
     loadingMore,
+    searchLoading,
     pagination,
     error,
     fetchInvoices,
@@ -71,6 +73,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   const invoices = useMemo(() => rawInvoices, [rawInvoices]);
   const isLoading = loading[clientId] || false;
   const isLoadingMore = loadingMore[clientId] || false;
+  const isSearchLoading = searchLoading[clientId] || false;
   const fetchError = error[clientId] || null;
   const clientPagination = pagination[clientId] || { hasMore: false };
 
@@ -80,43 +83,25 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     }
   }, [clientId, fetchInvoices]);
 
-  // Filter invoices based on search criteria using useMemo to prevent infinite loops
-  const filteredInvoices = useMemo(() => {
-    let filtered = [...invoices]; // Create a shallow copy to avoid mutation
+  // Debounced search effect to prevent excessive API calls
+  useEffect(() => {
+    if (!clientId) return;
+    
+    const timeoutId = setTimeout(() => {
+      const searchParams = {
+        search: searchTerm,
+        date: searchDate,
+        status: searchStatus
+      };
+      
+      fetchInvoices(clientId, false, true, searchParams); // Reset pagination for search
+    }, 300); // 300ms debounce
 
-    // Filter by invoice number/name
-    if (searchTerm) {
-      filtered = filtered.filter((invoice) => {
-        const invoiceData = invoice.data || {};
-        const invoiceNumber = invoiceData.invoiceNumber || "";
-        return invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
-      });
-    }
+    return () => clearTimeout(timeoutId);
+  }, [clientId, searchTerm, searchDate, searchStatus, fetchInvoices]);
 
-    // Filter by issue date
-    if (searchDate) {
-      filtered = filtered.filter((invoice) => {
-        const invoiceData = invoice.data || {};
-        const issueDate = invoiceData.invoiceDate || invoiceData.issueDate;
-        if (!issueDate) return false;
-        const formattedIssueDate = new Date(issueDate)
-          .toISOString()
-          .split("T")[0];
-        return formattedIssueDate === searchDate;
-      });
-    }
-
-    // Filter by status
-    if (searchStatus) {
-      filtered = filtered.filter((invoice) => {
-        const invoiceData = invoice.data || {};
-        const status = invoiceData.status || "PENDING";
-        return status === searchStatus;
-      });
-    }
-
-    return filtered;
-  }, [invoices, searchTerm, searchDate, searchStatus]);
+  // Use invoices directly since filtering is now done server-side
+  const filteredInvoices = invoices;
 
   const clearSearch = () => {
     setSearchTerm("");
@@ -158,11 +143,16 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
         bankAccount: invoiceData.bankAccount || "",
       };
 
+      // Convert company logo URL to base64 for PDF generation
+      console.log('🚀 About to prepare PDF data with logo:', pdfData.companyLogo);
+      const preparedPdfData = await prepareInvoiceDataForPDF(pdfData);
+      console.log('🚀 PDF data prepared, logo is now:', preparedPdfData.companyLogo?.substring(0, 50) + '...');
+
       // Generate and download the PDF using selected template
       const selectedTemplate = invoiceData.selectedTemplate || DEFAULT_TEMPLATE;
       const TemplateComponent = getTemplateComponent(selectedTemplate);
       const blob = await pdf(
-        <TemplateComponent invoiceData={pdfData} />
+        <TemplateComponent invoiceData={preparedPdfData} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -425,27 +415,38 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
             </div>
           )}
 
-          {invoices.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                No invoices
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Create your first invoice for this client.
-              </p>
-            </div>
-          ) : filteredInvoices.length === 0 ? (
-            <div className="text-center py-8">
-              <Search className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                No invoices found
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Try adjusting your search criteria.
-              </p>
-            </div>
-          ) : (
+          {/* Invoice List Area with Search Loading Overlay */}
+          <div className="relative">
+            {isSearchLoading && (
+              <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm">Searching...</span>
+                </div>
+              </div>
+            )}
+            
+            {invoices.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  No invoices
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Create your first invoice for this client.
+                </p>
+              </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="text-center py-8">
+                <Search className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  No invoices found
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Try adjusting your search criteria.
+                </p>
+              </div>
+            ) : (
             <div
               ref={invoicesContainerRef}
               className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
@@ -590,6 +591,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                 )}
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
 

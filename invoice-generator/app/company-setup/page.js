@@ -32,7 +32,10 @@ export default function CompanySetupPage() {
               setExistingProfile({
                 companyName: result.data.companyName || "",
                 companyEmail: result.data.companyEmail || "",
-                companyLogo: result.data.companyLogo || ""
+                companyLogo: result.data.companyLogo || "",
+                bankName: result.data.bankName || "",
+                bankAccount: result.data.bankAccount || "",
+                defaultDueDays: result.data.defaultDueDays || null
               });
             }
           }

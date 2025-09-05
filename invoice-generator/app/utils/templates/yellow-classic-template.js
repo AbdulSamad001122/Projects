@@ -31,6 +31,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   companyLogo: {
+    marginLeft: 10,
     width: 50,
     height: 50,
     borderRadius: 25, // Make logo circular
