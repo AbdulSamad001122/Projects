@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ClientProvider } from "@/contexts/ClientContext";
 import { ItemProvider } from "@/contexts/ItemContext";
 import { InvoiceProvider } from "@/contexts/InvoiceContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import { Analytics } from "@vercel/analytics/next";
 import {
   SidebarProvider,
@@ -36,24 +37,26 @@ export default function RootLayout({ children }) {
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <ThemeProvider>
-            <ClientProvider>
-              <ItemProvider>
-                <InvoiceProvider>
-                  <SidebarProvider>
-                    <AppSidebar />
-                    <SidebarInset>
-                      <div className="flex flex-col min-h-screen">
-                        <SidebarAwareNavbar />
-                        <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-                          {children}
-                        </main>
-                      </div>
-                    </SidebarInset>
-                  </SidebarProvider>
-                  <Analytics />
-                </InvoiceProvider>
-              </ItemProvider>
-            </ClientProvider>
+            <ToastProvider>
+              <ClientProvider>
+                <ItemProvider>
+                  <InvoiceProvider>
+                    <SidebarProvider>
+                      <AppSidebar />
+                      <SidebarInset>
+                        <div className="flex flex-col min-h-screen">
+                          <SidebarAwareNavbar />
+                          <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+                            {children}
+                          </main>
+                        </div>
+                      </SidebarInset>
+                    </SidebarProvider>
+                    <Analytics />
+                  </InvoiceProvider>
+                </ItemProvider>
+              </ClientProvider>
+            </ToastProvider>
           </ThemeProvider>
         </body>
       </html>

@@ -76,10 +76,25 @@ function Button({
       onClick={handleClick}
       {...props}
     >
-      {(loading || isLoading) && (
-        <Loader2 className="h-4 w-4 animate-spin" />
+      {asChild ? (
+        React.cloneElement(children, {
+          children: (
+            <>
+              {(loading || isLoading) && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {children.props.children}
+            </>
+          )
+        })
+      ) : (
+        <>
+          {(loading || isLoading) && (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          )}
+          {children}
+        </>
       )}
-      {children}
     </Comp>
   );
 }

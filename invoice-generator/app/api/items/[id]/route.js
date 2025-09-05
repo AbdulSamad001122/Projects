@@ -2,10 +2,23 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { getCachedUser } from "@/lib/userCache";
+import { 
+  validateName, 
+  validatePrice, 
+  sanitizeString,
+  validateRequestSize 
+} from "@/lib/validation";
+import { applyRateLimit, createRateLimitResponse } from "@/lib/rateLimiter";
 
 // GET /api/items/[id] - Get a specific item
 export async function GET(request, { params }) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = applyRateLimit(request, 'read');
+    if (rateLimitResult.isLimited) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const { userId } = await auth();
 
     if (!userId) {
@@ -24,9 +37,16 @@ export async function GET(request, { params }) {
         id,
         userId: user.id,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        description: true,
+        isForAllClients: true,
+        createdAt: true,
+        updatedAt: true,
         itemClients: {
-          include: {
+          select: {
             client: {
               select: {
                 id: true,
@@ -56,10 +76,25 @@ export async function GET(request, { params }) {
 // PUT /api/items/[id] - Update an item
 export async function PUT(request, { params }) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = applyRateLimit(request, 'write');
+    if (rateLimitResult.isLimited) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Validate request size
+    const sizeValidation = await validateRequestSize(request, 10240); // 10KB limit
+    if (!sizeValidation.isValid) {
+      return NextResponse.json(
+        { error: sizeValidation.error },
+        { status: 413 }
+      );
     }
 
     const user = await getCachedUser(userId);
@@ -83,17 +118,19 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    // Validation
-    if (!name || !price) {
+    // Validate and sanitize required fields
+    const nameValidation = validateName(name);
+    if (!nameValidation.isValid) {
       return NextResponse.json(
-        { error: "Name and price are required" },
+        { error: nameValidation.error },
         { status: 400 }
       );
     }
 
-    if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+    const priceValidation = validatePrice(price);
+    if (!priceValidation.isValid) {
       return NextResponse.json(
-        { error: "Price must be a valid positive number" },
+        { error: priceValidation.error },
         { status: 400 }
       );
     }
@@ -110,9 +147,9 @@ export async function PUT(request, { params }) {
     const updatedItem = await prisma.item.update({
       where: { id },
       data: {
-        name: name.trim(),
-        price: parseFloat(price),
-        description: description?.trim() || null,
+        name: nameValidation.value,
+        price: priceValidation.value,
+        description: description ? sanitizeString(description, 1000) : null,
         isForAllClients: Boolean(isForAllClients),
       },
     });
@@ -152,9 +189,16 @@ export async function PUT(request, { params }) {
     // Fetch the updated item with associations
     const itemWithAssociations = await prisma.item.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        description: true,
+        isForAllClients: true,
+        createdAt: true,
+        updatedAt: true,
         itemClients: {
-          include: {
+          select: {
             client: {
               select: {
                 id: true,
@@ -180,6 +224,12 @@ export async function PUT(request, { params }) {
 // DELETE /api/items/[id] - Delete an item
 export async function DELETE(request, { params }) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = applyRateLimit(request, 'write');
+    if (rateLimitResult.isLimited) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const { userId } = await auth();
 
     if (!userId) {

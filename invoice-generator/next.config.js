@@ -7,6 +7,17 @@ const nextConfig = {
     }
     return config
   },
+  // Configure external images for Cloudinary
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
   // Ensure API routes work properly
   async rewrites() {
     return []

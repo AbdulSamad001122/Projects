@@ -15,9 +15,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { X, Upload, Building2, ImageIcon, Trash2 } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
+import { useToast } from "@/contexts/ToastContext";
 
 export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = true, initialData = null }) {
   const { userId } = useAuth();
+  const { toast } = useToast();
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     companyName: "",
@@ -168,8 +170,6 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submission started');
-    console.log('Update option:', updateOption);
 
     if (!validateForm()) {
       return;
@@ -205,8 +205,6 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
         updateOption: updateOption,
       };
       
-      console.log('Sending request to /api/company-profile with body:', requestBody);
-      
       const response = await fetch("/api/company-profile", {
         method: "POST",
         headers: {
@@ -214,17 +212,17 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
         },
         body: JSON.stringify(requestBody),
       });
-      
-      console.log('Response status:', response.status);
-      console.log('Response URL:', response.url);
 
       const result = await response.json();
 
       if (response.ok && result.success) {
         // Show success message with invoice update info if applicable
-        if (result.message && result.message.includes('Updated')) {
-          console.log('Company profile update result:', result.message);
-          alert(result.message); // Temporary alert to show the result
+        if (result.data?.updatedInvoicesCount > 0) {
+          // Show a user-friendly success message without console warnings
+          const message = `Company profile updated successfully! ${result.data.updatedInvoicesCount} existing invoices have been updated with the new information.`;
+          toast.success(message);
+        } else {
+          toast.success('Company profile updated successfully!');
         }
         
         // Use onSave if provided, otherwise fall back to onProfileSaved
@@ -442,6 +440,7 @@ export function CompanyProfileForm({ onClose, onSave, onProfileSaved, isModal = 
         <LoadingButton
           type="submit"
           loading={loading}
+          disabled={loading}
           className="flex-1"
         >
           <Building2 className="w-4 h-4 mr-2" />

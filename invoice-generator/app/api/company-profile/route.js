@@ -2,10 +2,23 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCachedUser } from "@/lib/userCache";
 import prisma from "@/lib/prisma";
+import { 
+  validateName, 
+  validateEmail, 
+  sanitizeString,
+  validateRequestSize 
+} from "@/lib/validation";
+import { applyRateLimit, createRateLimitResponse } from "@/lib/rateLimiter";
 
 // GET /api/company-profile - Fetch company profile for the authenticated user
 export async function GET(request) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = applyRateLimit(request, 'read');
+    if (rateLimitResult.isLimited) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const { userId } = await auth();
 
     if (!userId) {
@@ -60,30 +73,44 @@ export async function GET(request) {
 // POST /api/company-profile - Create or update company profile
 export async function POST(request) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = applyRateLimit(request, 'write');
+    if (rateLimitResult.isLimited) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Validate request size
+    const sizeValidation = await validateRequestSize(request, 51200); // 50KB limit for company profile
+    if (!sizeValidation.isValid) {
+      return NextResponse.json(
+        { error: sizeValidation.error },
+        { status: 413 }
+      );
+    }
+
     const body = await request.json();
     const { companyName, companyEmail, companyLogo, bankName, bankAccount, defaultDueDays, updateOption = "fromNow" } = body;
-    
-    console.log('Company profile update request:', { updateOption, companyName, companyEmail });
 
-    // Validate required fields
-    if (!companyName || !companyEmail) {
+    // Validate and sanitize required fields
+    const nameValidation = validateName(companyName);
+    if (!nameValidation.isValid) {
       return NextResponse.json(
-        { error: "Company name and email are required" },
+        { error: nameValidation.error },
         { status: 400 }
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(companyEmail)) {
+    // Validate email
+    const emailValidation = validateEmail(companyEmail);
+    if (!emailValidation.isValid) {
       return NextResponse.json(
-        { error: "Invalid email format" },
+        { error: emailValidation.error },
         { status: 400 }
       );
     }
@@ -97,11 +124,11 @@ export async function POST(request) {
         id: dbUser.id,
       },
       data: {
-        companyName: companyName.trim(),
-        companyEmail: companyEmail.trim().toLowerCase(),
-        companyLogo: companyLogo || null,
-        bankName: bankName ? bankName.trim() : null,
-        bankAccount: bankAccount ? bankAccount.trim() : null,
+        companyName: nameValidation.value,
+        companyEmail: emailValidation.value,
+        companyLogo: companyLogo ? sanitizeString(companyLogo, 10000) : null,
+        bankName: bankName ? sanitizeString(bankName, 100) : null,
+        bankAccount: bankAccount ? sanitizeString(bankAccount, 100) : null,
         defaultDueDays: defaultDueDays && String(defaultDueDays).trim() !== '' ? parseInt(defaultDueDays) : null,
       },
       select: {
@@ -118,7 +145,6 @@ export async function POST(request) {
     // If updateOption is "allInvoices", update all existing invoices with new company info
     let updatedInvoicesCount = 0;
     if (updateOption === "allInvoices") {
-      console.log('Updating all invoices with new company info...');
       // Get all invoices for this user
       const invoices = await prisma.invoice.findMany({
         where: {
@@ -131,8 +157,6 @@ export async function POST(request) {
           data: true,
         },
       });
-      
-      console.log(`Found ${invoices.length} invoices to update`);
 
       // Update each invoice's data with new company information
       for (const invoice of invoices) {
@@ -142,11 +166,11 @@ export async function POST(request) {
         if (invoiceData && typeof invoiceData === "object") {
           const updatedInvoiceData = {
             ...invoiceData,
-            companyName: companyName.trim(),
-            companyEmail: companyEmail.trim().toLowerCase(),
-            companyLogo: companyLogo || null,
-            bankName: bankName ? bankName.trim() : null,
-            bankAccount: bankAccount ? bankAccount.trim() : null,
+            companyName: nameValidation.value,
+            companyEmail: emailValidation.value,
+            companyLogo: companyLogo ? sanitizeString(companyLogo, 10000) : null,
+            bankName: bankName ? sanitizeString(bankName, 100) : null,
+            bankAccount: bankAccount ? sanitizeString(bankAccount, 100) : null,
             defaultDueDays: defaultDueDays && String(defaultDueDays).trim() !== '' ? parseInt(defaultDueDays) : null,
           };
 
@@ -156,7 +180,6 @@ export async function POST(request) {
           });
           
           updatedInvoicesCount++;
-          console.log(`Updated invoice ${invoice.id} with new company data`);
         }
       }
     }

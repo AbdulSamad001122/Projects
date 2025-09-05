@@ -21,7 +21,18 @@ export async function POST(request) {
     // Get the original invoice
     const originalInvoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
-      include: { client: true }
+      select: {
+        id: true,
+        data: true, // Contains invoice details needed for duplication
+        clientId: true,
+        userId: true,
+        client: {
+          select: {
+            id: true,
+            userId: true, // Needed for authorization check
+          }
+        }
+      }
     });
 
     if (!originalInvoice) {

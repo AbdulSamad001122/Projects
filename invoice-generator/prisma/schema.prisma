@@ -41,6 +41,9 @@ model User {
   invoiceTemplates InvoiceTemplate[]
   items            Item[]
 
+  // Indexes
+  @@index([clerkId])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -62,6 +65,10 @@ model Client {
   @@unique([userId, email])
   // Indexes
   @@index([userId])
+  @@index([userClerkId])
+  @@index([userId, name])
+  @@index([userId, email])
+  @@index([userId, createdAt(sort: Desc)])
   @@map("clients")
 }
 
@@ -128,6 +135,9 @@ model Item {
   // Indexes
   @@index([userId])
   @@index([isForAllClients])
+  @@index([userId, name])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isForAllClients])
   @@map("items")
 }
 

@@ -13,15 +13,22 @@ const LoadingButton = ({
   className,
   showErrorToast = true,
   errorMessage = "An error occurred. Please try again.",
+  loading: externalLoading = false, // Accept external loading prop
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleClick = async (e) => {
-    if (!onClick || isLoading || disabled) return;
+  // Use external loading state if provided, otherwise use internal state
+  const currentLoading = externalLoading || isLoading;
 
-    setIsLoading(true);
+  const handleClick = async (e) => {
+    if (!onClick || currentLoading || disabled) return;
+
+    // Only manage internal loading state if no external loading is provided
+    if (!externalLoading) {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -37,7 +44,10 @@ const LoadingButton = ({
         alert(errorMsg);
       }
     } finally {
-      setIsLoading(false);
+      // Only reset internal loading state if no external loading is provided
+      if (!externalLoading) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -48,8 +58,8 @@ const LoadingButton = ({
         variant={variant}
         size={size}
         className={cn(className)}
-        disabled={disabled || isLoading}
-        loading={isLoading}
+        disabled={disabled || currentLoading}
+        loading={currentLoading}
         onClick={handleClick}
       >
         {children}

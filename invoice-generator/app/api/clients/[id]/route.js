@@ -2,9 +2,16 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCachedUser } from "@/lib/userCache";
 import prisma from "@/lib/prisma";
+import { applyRateLimit, createRateLimitResponse } from "@/lib/rateLimiter";
 
 export async function GET(request, { params }) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = applyRateLimit(request, 'read');
+    if (rateLimitResult.isLimited) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const { userId } = await auth();
 
     if (!userId) {
@@ -14,8 +21,11 @@ export async function GET(request, { params }) {
     const resolvedParams = await params;
     const clientId = resolvedParams.id;
     
-    if (!clientId) {
-      return NextResponse.json({ error: "Client ID is required" }, { status: 400 });
+    if (!clientId || !/^[a-zA-Z0-9_-]+$/.test(clientId)) {
+      return NextResponse.json(
+        { error: "Invalid client ID format" },
+        { status: 400 }
+      );
     }
 
     // Use cached user lookup to reduce database queries
@@ -26,6 +36,15 @@ export async function GET(request, { params }) {
       where: {
         id: clientId,
         userId: dbUser.id,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        autoRenumberInvoices: true,
+        createdAt: true,
+        updatedAt: true,
+        userId: true, // Needed for security checks
       },
     });
 

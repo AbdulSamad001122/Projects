@@ -126,7 +126,8 @@ export function InvoiceProvider({ children }) {
       
       const newInvoices = response.data.invoices || [];
       
-      if (reset || isInitialLoad) {
+      // Always reset when search parameters are provided to avoid mixing results
+      if (reset || isInitialLoad || hasSearchParams) {
         setInvoicesByClient(prev => ({
           ...prev,
           [clientId]: newInvoices

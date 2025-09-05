@@ -18,37 +18,28 @@ export const convertImageToBase64 = async (imageUrl) => {
   }
 
   try {
-    console.log('📡 Fetching image from:', imageUrl);
-    const response = await fetch(imageUrl, {
-      mode: 'cors',
-      headers: {
-        'Accept': 'image/*'
-      }
-    });
+    // Use our proxy API to fetch and convert the image
+    console.log('📡 Using proxy API to fetch image:', imageUrl);
+    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+    const response = await fetch(proxyUrl);
 
-    console.log('📡 Fetch response status:', response.status);
+    console.log('📡 Proxy API response status:', response.status);
     
     if (!response.ok) {
-      console.log('❌ Fetch failed with status:', response.status, response.statusText);
+      console.log('❌ Proxy API failed with status:', response.status, response.statusText);
       console.log('🔄 Returning original URL for @react-pdf/renderer to handle');
       return imageUrl; // Let @react-pdf/renderer handle the original URL
     }
 
-    const blob = await response.blob();
-    console.log('📦 Blob created, size:', blob.size, 'bytes, type:', blob.type);
+    const result = await response.json();
     
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        console.log('✅ Base64 conversion completed, length:', reader.result.length);
-        resolve(reader.result);
-      };
-      reader.onerror = () => {
-        console.log('❌ FileReader error, returning original URL');
-        resolve(imageUrl); // Fallback to original URL
-      };
-      reader.readAsDataURL(blob);
-    });
+    if (result.success && result.dataUrl) {
+      console.log('✅ Base64 conversion completed via proxy, size:', result.size, 'bytes');
+      return result.dataUrl;
+    } else {
+      console.log('❌ Proxy API returned error:', result.error);
+      return imageUrl; // Fallback to original URL
+    }
   } catch (error) {
     console.log('❌ Error during base64 conversion:', error.message);
     console.log('🔄 Returning original URL for @react-pdf/renderer to handle');
@@ -88,11 +79,18 @@ export const prepareInvoiceDataForPDF = async (invoiceData) => {
 
   console.log('🖼️ Attempting base64 conversion...');
   const base64Logo = await convertImageToBase64(optimizedLogo);
-  console.log('🖼️ Base64 conversion result:', base64Logo ? 'Success' : 'Failed');
+  
+  if (base64Logo && base64Logo.startsWith('data:')) {
+    console.log('✅ Base64 conversion successful, length:', base64Logo.length);
+  } else if (base64Logo) {
+    console.log('⚠️ Base64 conversion returned original URL (fallback)');
+  } else {
+    console.log('❌ Base64 conversion failed, returned null');
+  }
   
   // If base64 conversion failed, use the optimized URL
   const finalLogo = base64Logo || optimizedLogo;
-  console.log('🖼️ Final logo for PDF:', finalLogo.substring(0, 50) + '...');
+  console.log('🖼️ Final logo for PDF:', finalLogo.startsWith('data:') ? 'Base64 Data URL' : finalLogo);
   
   const result = {
     ...invoiceData,
