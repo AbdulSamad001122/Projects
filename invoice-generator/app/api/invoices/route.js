@@ -329,7 +329,7 @@ export async function PUT(request) {
       },
     });
 
-      return NextResponse.json({ invoice });
+      return NextResponse.json({ invoice: updatedInvoice });
   } catch (error) {
     console.error("Error updating invoice:", error);
     return NextResponse.json(

@@ -44,7 +44,7 @@ export default function SidebarAwareNavbar({ className }) {
                   Welcome,{" "}
                   {user.firstName || user.emailAddresses[0].emailAddress}
                 </span>
-                <UserButton afterSignOutUrl="/" />
+                <UserButton signOutUrl="/" />
               </div>
             ) : (
               <div className="flex items-center space-x-2">

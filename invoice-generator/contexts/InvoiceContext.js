@@ -353,6 +353,40 @@ export function InvoiceProvider({ children }) {
     }
   }, [fetchInvoices]);
 
+  const deleteAllInvoices = useCallback(async (clientId) => {
+    try {
+      // Get all invoices for the client
+      const clientInvoices = invoicesByClient[clientId] || [];
+      
+      if (clientInvoices.length === 0) {
+        return;
+      }
+
+      // Delete all invoices for this client
+      await axios.delete(`/api/invoices/bulk?clientId=${clientId}`);
+      
+      // Clear the client's invoices from the state
+      setInvoicesByClient(prev => ({
+        ...prev,
+        [clientId]: []
+      }));
+      
+      // Update pagination
+      setPagination(prev => ({
+        ...prev,
+        [clientId]: { page: 1, limit: 10, totalCount: 0, totalPages: 0, hasMore: false }
+      }));
+      
+      setLastFetch(prev => ({
+        ...prev,
+        [clientId]: Date.now()
+      }));
+    } catch (err) {
+      console.error('Error deleting all invoices:', err);
+      throw err;
+    }
+  }, [invoicesByClient]);
+
   const getInvoicesForClient = useCallback((clientId) => {
     return invoicesByClient[clientId] || [];
   }, [invoicesByClient]);
@@ -403,6 +437,7 @@ export function InvoiceProvider({ children }) {
     updateInvoiceStatus,
     duplicateInvoice,
     deleteInvoice,
+    deleteAllInvoices,
     getInvoicesForClient,
     getInvoiceById,
     refreshInvoices,

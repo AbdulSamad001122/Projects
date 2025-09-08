@@ -57,12 +57,13 @@ export const SECURITY_CONFIG = {
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Content-Security-Policy': [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.com https://*.clerk.accounts.dev",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://clerk.com https://*.clerk.accounts.dev https://api.clerk.dev",
-      "frame-src 'self' https://clerk.com https://*.clerk.accounts.dev"
+      "img-src 'self' data: https: blob: https://img.clerk.com",
+      "connect-src 'self' https://clerk.com https://*.clerk.accounts.dev https://api.clerk.dev https://clerk-telemetry.com https://*.clerk-telemetry.com",
+      "frame-src 'self' https://clerk.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
+      "worker-src 'self' blob:"
     ].join('; ')
   },
 

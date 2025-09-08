@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import InvoicePDF from "@/app/utils/invoiceTemplate";
-import { getTemplateComponent, DEFAULT_TEMPLATE } from "@/app/utils/templates";
+import { getTemplateComponent, DEFAULT_TEMPLATE, getTemplateById } from "@/app/utils/templates";
 import { prepareInvoiceDataForPDF } from "@/app/utils/imageToBase64";
 import { useInvoices } from "@/contexts/InvoiceContext";
 
@@ -57,6 +57,7 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     fetchInvoices,
     loadMoreInvoices,
     deleteInvoice,
+    deleteAllInvoices,
     updateInvoiceStatus,
     duplicateInvoice,
   } = useInvoices();
@@ -67,6 +68,8 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
   const [searchStatus, setSearchStatus] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Get invoices from context
   const rawInvoices = getInvoicesForClient(clientId);
@@ -188,6 +191,20 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!clientId) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteAllInvoices(clientId);
+      setDeleteAllDialogOpen(false);
+    } catch (error) {
+      console.error("Error deleting all invoices:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleDuplicateInvoice = async (invoiceId) => {
     try {
       await duplicateInvoice(invoiceId, clientId);
@@ -277,6 +294,13 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
         {formatStatusText(status)}
       </Badge>
     );
+  };
+
+  const getTemplateName = (invoice) => {
+    const invoiceData = invoice.data || {};
+    const templateId = invoiceData.selectedTemplate || DEFAULT_TEMPLATE;
+    const template = getTemplateById(templateId);
+    return template.name || "Unknown Template";
   };
 
   if (isLoading) {
@@ -403,16 +427,28 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                     </button>
                   )}
                 </div>
-                {(searchTerm || searchDate || searchStatus) && (
-                  <Button
-                    variant="outline"
-                    onClick={clearSearch}
-                    className="flex items-center space-x-2"
-                  >
-                    <X className="h-4 w-4" />
-                    <span>Clear All</span>
-                  </Button>
-                )}
+                <div className="flex space-x-2">
+                  {(searchTerm || searchDate || searchStatus) && (
+                    <Button
+                      variant="outline"
+                      onClick={clearSearch}
+                      className="flex items-center space-x-2"
+                    >
+                      <X className="h-4 w-4" />
+                      <span>Clear All</span>
+                    </Button>
+                  )}
+                  {invoices.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => setDeleteAllDialogOpen(true)}
+                      className="flex items-center space-x-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Delete All</span>
+                    </Button>
+                  )}
+                </div>
               </div>
               {(searchTerm || searchDate || searchStatus) && (
                 <div className="text-sm text-gray-600">
@@ -484,38 +520,44 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
                           </h4>
                           {getStatusBadge(invoice)}
                         </div>
-                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              Issue:{" "}
-                              {invoiceData.invoiceDate || invoiceData.issueDate
-                                ? formatDate(
-                                    invoiceData.invoiceDate ||
-                                      invoiceData.issueDate
-                                  )
-                                : "N/A"}
-                            </span>
+                        <div className="mt-2 space-y-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                Issue:{" "}
+                                {invoiceData.invoiceDate || invoiceData.issueDate
+                                  ? formatDate(
+                                      invoiceData.invoiceDate ||
+                                        invoiceData.issueDate
+                                    )
+                                  : "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                Due:{" "}
+                                {invoiceData.dueDate
+                                  ? formatDate(invoiceData.dueDate)
+                                  : "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <DollarSign className="h-4 w-4" />
+                              <span>
+                                Total:{" "}
+                                {formatCurrency(calculateInvoiceTotal(invoice))}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <FileText className="h-4 w-4" />
+                              <span>Items: {invoiceData.items?.length || 0}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              Due:{" "}
-                              {invoiceData.dueDate
-                                ? formatDate(invoiceData.dueDate)
-                                : "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <DollarSign className="h-4 w-4" />
-                            <span>
-                              Total:{" "}
-                              {formatCurrency(calculateInvoiceTotal(invoice))}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <FileText className="h-4 w-4" />
-                            <span>Items: {invoiceData.items?.length || 0}</span>
+                            <span>Template: {getTemplateName(invoice)}</span>
                           </div>
                         </div>
                       </div>
@@ -628,6 +670,37 @@ export default function InvoiceList({ clientId, onEditInvoice }) {
               errorMessage="Failed to delete invoice. Please try again."
             >
               Delete
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete All Invoices</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete all {invoices.length} invoices for this client? This action cannot be undone and will permanently remove all invoice data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteAllDialogOpen(false)}
+              disabled={isDeleting}
+              className="cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+            >
+              Cancel
+            </Button>
+            <LoadingButton
+              variant="destructive"
+              onClick={handleDeleteAll}
+              loading={isDeleting}
+              className="cursor-pointer hover:bg-red-700 transition-colors duration-200"
+              errorMessage="Failed to delete all invoices. Please try again."
+            >
+              Delete All
             </LoadingButton>
           </DialogFooter>
         </DialogContent>
