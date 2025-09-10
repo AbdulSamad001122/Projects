@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { v2 as cloudinary } from "cloudinary";
 import * as XLSX from "xlsx";
-import puppeteer from "puppeteer";
+import puppeteerCore from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import path from "path";
 import fs from "fs";
 import { Readable } from "stream";
@@ -84,10 +85,18 @@ function convertToHTML(data) {
  * @returns {Buffer} PDF buffer
  */
 async function convertHTMLToPDFBuffer(html, rowCount = 0) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'] // Better compatibility for cloud environments
-  });
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Launch Chromium differently for prod (serverless) vs local dev
+  const browser = isProduction
+    ? await puppeteerCore.launch({
+        args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+      })
+    : await (await import('puppeteer')).default.launch({
+        headless: true,
+      });
   const page = await browser.newPage();
 
   // Determine dynamic width based on rowCount with a minimum of 1450px

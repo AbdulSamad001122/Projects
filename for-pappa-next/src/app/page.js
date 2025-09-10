@@ -354,13 +354,13 @@ export default function Home() {
                       value={serialColumn}
                       onChange={(e) => setSerialColumn(e.target.value)}
                       placeholder="Del.Challan"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 text-black py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <p className="mt-1 text-xs text-gray-500">
                       The column name to group rows by (e.g., &quot;Del.Challan&quot;, &quot;Serial&quot;, etc.)
                     </p>
                   </div>
-                  <div>
+                  {/* <div>
                     <div className="flex items-center">
                       <input
                         id="create-xlsx"
@@ -376,7 +376,7 @@ export default function Home() {
                     <p className="mt-1 text-xs text-gray-500 ml-6">
                       Each serial number group will be saved as a separate XLSX file
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}
