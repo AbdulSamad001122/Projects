@@ -87,16 +87,32 @@ function convertToHTML(data) {
 async function convertHTMLToPDFBuffer(html, rowCount = 0) {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Launch Chromium differently for prod (serverless) vs local dev
-  const browser = isProduction
-    ? await puppeteerCore.launch({
-        args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-      })
-    : await (await import('puppeteer')).default.launch({
-        headless: true,
-      });
+  // Prefer an explicit Chrome path if provided by the platform
+  const envExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_EXECUTABLE_PATH;
+
+  let browser;
+  if (!isProduction) {
+    console.log('[pdf] Launching local Puppeteer (dev mode)');
+    // Local development uses full puppeteer
+    browser = await (await import('puppeteer')).default.launch({ headless: true });
+  } else if (envExecutablePath) {
+    console.log('[pdf] Launching puppeteer-core with env executable path:', envExecutablePath);
+    // Platforms with preinstalled Chrome/Chromium (Docker, VM, some PaaS)
+    browser = await puppeteerCore.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      executablePath: envExecutablePath,
+      headless: 'new',
+    });
+  } else {
+    // Serverless (AWS Lambda/Vercel) with @sparticuz/chromium
+    const chromiumExecPath = await chromium.executablePath();
+    console.log('[pdf] Launching puppeteer-core with @sparticuz/chromium. execPath:', chromiumExecPath);
+    browser = await puppeteerCore.launch({
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: chromiumExecPath,
+      headless: chromium.headless,
+    });
+  }
   const page = await browser.newPage();
 
   // Determine dynamic width based on rowCount with a minimum of 1450px
