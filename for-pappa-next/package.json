@@ -1,0 +1,33 @@
+{
+  "name": "for-pappa-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.31.10",
+    "axios": "^1.11.0",
+    "cloudinary": "^2.7.0",
+    "mongoose": "^8.7.1",
+    "fs": "^0.0.1-security",
+    "next": "15.5.2",
+    "path": "^0.12.7",
+    "puppeteer": "^24.19.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "stream": "^0.0.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/react": "19.1.12",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "tailwindcss": "^4"
+  }
+}
