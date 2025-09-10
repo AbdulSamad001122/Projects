@@ -10,6 +10,7 @@ import chromium from "@sparticuz/chromium";
 import path from "path";
 import fs from "fs";
 import { Readable } from "stream";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -255,6 +256,10 @@ export async function POST(request) {
       .map(item => item.original);
 
     console.log(`Processing ${sortedSerialNumbers.length} serial numbers...`);
+    const forcePdfLib = (process.env.FORCE_PDF_LIB || '').toLowerCase() === '1' || (process.env.FORCE_PDF_LIB || '').toLowerCase() === 'true';
+    if (forcePdfLib) {
+      console.log('[pdf] FORCE_PDF_LIB is enabled. Using pdf-lib for generation.');
+    }
 
     for (const serialNumber of sortedSerialNumbers) {
       const rows = groupedData.get(serialNumber);
@@ -302,9 +307,56 @@ export async function POST(request) {
           }
         }
 
-        // Generate PDF using enhanced function
+        // Generate PDF using Puppeteer; if it fails (Chromium missing libs), fallback to pdf-lib
         const html = convertToHTML(rows);
-        const pdfBuffer = await convertHTMLToPDFBuffer(html, rows.length);
+        let pdfBuffer;
+        try {
+          pdfBuffer = await convertHTMLToPDFBuffer(html, rows.length);
+        } catch (pdfErr) {
+          console.error(`[pdf] Primary generation failed, using pdf-lib fallback: ${pdfErr?.message || pdfErr}`);
+          // Minimal tabular PDF via pdf-lib (no HTML rendering)
+          const doc = await PDFDocument.create();
+          const page = doc.addPage([595.28, 842]); // A4 portrait
+          const font = await doc.embedFont(StandardFonts.Helvetica);
+          const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+          const marginLeft = 40;
+          const marginTop = 40;
+          const lineHeight = 14;
+          const maxWidth = 515; // page width - margins
+
+          const headers = Object.keys(rows[0] || {});
+          let cursorY = 842 - marginTop;
+
+          // Title
+          const title = `Serial ${serialNumber} (${rows.length} rows)`;
+          page.drawText(title, { x: marginLeft, y: cursorY, size: 12, font: fontBold, color: rgb(0,0,0) });
+          cursorY -= lineHeight * 2;
+
+          // Header row
+          const headerText = headers.join(" | ");
+          page.drawText(headerText.slice(0, 180), { x: marginLeft, y: cursorY, size: 10, font: fontBold });
+          cursorY -= lineHeight;
+
+          // Data rows
+          for (const row of rows) {
+            const line = headers.map(h => String(row[h] ?? '')).join(" | ");
+            // wrap very long lines naively
+            const chunks = line.match(/.{1,180}/g) || [''];
+            for (const chunk of chunks) {
+              if (cursorY < marginTop + lineHeight) {
+                // new page
+                const newPage = doc.addPage([595.28, 842]);
+                cursorY = 842 - marginTop;
+                newPage.drawText('(continued)', { x: marginLeft, y: cursorY, size: 10, font });
+                cursorY -= lineHeight * 2;
+              }
+              page.drawText(chunk, { x: marginLeft, y: cursorY, size: 10, font });
+              cursorY -= lineHeight;
+            }
+          }
+
+          pdfBuffer = Buffer.from(await doc.save());
+        }
 
         // Upload PDF to Cloudinary as completely public raw resource
         const pdfUploadResult = await new Promise((resolve, reject) => {
