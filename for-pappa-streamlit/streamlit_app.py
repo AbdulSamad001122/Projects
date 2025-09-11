@@ -13,19 +13,42 @@ import cloudinary.uploader
 from dotenv import load_dotenv
 import zipfile
 
-# Load environment variables from .env at project root
+import os
+import streamlit as st
+from dotenv import load_dotenv
+import cloudinary
+
+
+
+# Load local .env if it exists
 load_dotenv()
 
-
 def configure_cloudinary():
-    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME") or os.getenv("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME")
-    api_key = os.getenv("CLOUDINARY_API_KEY")
+    """Configure Cloudinary from either .env (local) or st.secrets (cloud)."""
+
+    # 1st: try local environment variables
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key    = os.getenv("CLOUDINARY_API_KEY")
     api_secret = os.getenv("CLOUDINARY_API_SECRET")
-    if not cloud_name or not api_key or not api_secret:
-        st.warning("Cloudinary env vars not set. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.")
-        return False
-    cloudinary.config(cloud_name=cloud_name, api_key=api_key, api_secret=api_secret, secure=True)
+
+    # 2nd: if empty, try st.secrets (Streamlit Cloud)
+    if not cloud_name:
+        cloud_name = st.secrets["cloudinary"]["CLOUD_NAME"]
+    if not api_key:
+        api_key = st.secrets["cloudinary"]["API_KEY"]
+    if not api_secret:
+        api_secret = st.secrets["cloudinary"]["API_SECRET"]
+
+    cloudinary.config(
+        cloud_name=cloud_name,
+        api_key=api_key,
+        api_secret=api_secret,
+        secure=True,
+    )
     return True
+
+configure_cloudinary()
+
 
 
 def dataframe_to_pdf_buffer(df: pd.DataFrame, title: str = "Report") -> bytes:
