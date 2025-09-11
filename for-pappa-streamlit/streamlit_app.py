@@ -236,7 +236,9 @@ def main():
     # Show summary and links
     summary_cols = ["serial", "rows", "pdf_url"] + (["xlsx_url"] if create_xlsx else [])
     res_df = pd.DataFrame([{k: r.get(k) for k in summary_cols} for r in results])
-    st.dataframe(res_df, width='stretch')
+    
+    # Let it automatically stretch
+    st.dataframe(res_df, use_container_width=True)
 
     pdfs_created = sum(1 for r in results if r.get("pdf_url")) if ensure_cloud else len(results)
     st.write(f"PDFs Created: {pdfs_created}")
