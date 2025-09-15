@@ -24,7 +24,7 @@ def configure_cloudinary():
 
 configure_cloudinary()
 
-def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indices=None, table_end_indices=None):
+def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indices=None):
     """Build a ReportLab Table with custom borders for each cell."""
     t = Table(data, repeatRows=1)
     rows, cols = len(data), len(data[0])
@@ -34,7 +34,7 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-         [colors.white, colors.white])
+         [colors.white, colors.Color(0.98, 0.98, 0.98)])
     ]
 
     # Handle total_row_indices as either single index or list of indices
@@ -51,31 +51,17 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
 
     for r in range(rows):
         for c in range(cols):
-            # Skip empty spacing rows (no borders)
-            if all(str(data[r][col]).strip() == "" for col in range(len(data[r]))):
-                continue
-            
             if r in total_row_indices and c in [0, 1, 2, 10, 11 , 5 , 6 , 7]:
                 continue  # no border for these cells on total row
             style.append(("BOX", (c, r), (c, r), 0.5, colors.black))
     
     # Apply header row styling to all header rows
     for header_row_idx in header_row_indices:
-        style.append(("BACKGROUND", (0, header_row_idx), (-1, header_row_idx), colors.white ))
+        style.append(("BACKGROUND", (0, header_row_idx), (-1, header_row_idx), colors.lightgrey))
         style.append(("TEXTCOLOR", (0, header_row_idx), (-1, header_row_idx), colors.black))
         style.append(("FONTNAME", (0, header_row_idx), (-1, header_row_idx), "Helvetica-Bold"))
         style.append(("FONTSIZE", (0, header_row_idx), (-1, header_row_idx), 9))
         style.append(("ALIGN", (0, header_row_idx), (-1, header_row_idx), "CENTER"))
-    
-    # Handle table_end_indices for visual separation
-    if table_end_indices is None:
-        table_end_indices = []
-    elif isinstance(table_end_indices, int):
-        table_end_indices = [table_end_indices]
-    
-    # Add thick bottom border to separate tables visually (removed for cleaner look)
-    # for table_end_idx in table_end_indices:
-    #     style.append(("LINEBELOW", (0, table_end_idx), (-1, table_end_idx), 2, colors.black))
 
     # Apply total row styling to all total rows
     for total_row_idx in total_row_indices:
@@ -132,7 +118,6 @@ def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
     combined_data = []
     total_row_indices = []
     header_row_indices = []
-    table_end_indices = []
     current_row_index = 0  # keep track of current row index for styling
     
     for group_idx, group in enumerate(serial_groups):
@@ -140,7 +125,7 @@ def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
         
         # 🔹 Add spacing rows before each group (except the first one)
         if group_idx > 0:
-            for _ in range(4):  # four blank rows for better margin between tables
+            for _ in range(3):  # three blank rows for better margin between tables
                 combined_data.append([""] * len(headers))
                 current_row_index += 1
         
@@ -172,7 +157,6 @@ def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
                     total_row[df.columns.get_loc(name)] = ""
             combined_data.append(total_row)
             total_row_indices.append(current_row_index)
-            table_end_indices.append(current_row_index)  # Mark end of this table
             current_row_index += 1
     
     # truncate long cell values
@@ -182,28 +166,26 @@ def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
             val = str(combined_data[r][cidx]) if combined_data[r][cidx] is not None else ""
             combined_data[r][cidx] = (val[: max_cell_len - 1] + "…") if len(val) > max_cell_len else val
     
-    table = build_table(combined_data, first_group_df, amount_pkr_col_idx, total_row_indices, header_row_indices, table_end_indices)
+    table = build_table(combined_data, first_group_df, amount_pkr_col_idx, total_row_indices, header_row_indices)
     
     # Page setup
+    tw, th = table.wrap(0, 0)
     side_margin, top_margin, bottom_margin = 20 * mm, 20 * mm, 20 * mm
     page_height, page_width = A4  # A4 portrait (swap if you want landscape)
     
+    if tw > page_width - side_margin * 2:
+        scale_factor = (page_width - side_margin * 2) / tw
+        table._width = tw * scale_factor
+        table._height = th * scale_factor
+        tw = table._width
+        th = table._height
+    
     c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
-    
-    # Wrap the table and get actual dimensions - following project specification for proper centering
     available_width = page_width - side_margin * 2
-    available_height = page_height - top_margin - bottom_margin
-    table.wrapOn(c, available_width, available_height)
-    
-    # Get actual table dimensions after wrapping
-    table_width = table._width
-    table_height = table._height
-
-    # Perfect horizontal and vertical centering as per project specifications
-    x = (page_width - table_width) / 2.0  # center horizontally
-    y = (page_height - table_height) / 2.0  # center vertically
-    table.drawOn(c, x, y)
-
+    table.wrapOn(c, available_width, page_height - top_margin - bottom_margin)
+    x = (page_width - table._width) / 2.0  # centre table
+    y = (page_height - top_margin)
+    table.drawOn(c, x, y - table._height)
     c.showPage()
     c.save()
     buffer.seek(0)
@@ -259,7 +241,7 @@ def dataframe_to_pdf_buffer(df: pd.DataFrame, header_map: dict = None) -> bytes:
     has_total_row = amount_pkr_col_idx is not None and len(data) > len(df) + 1
     total_row_idx = len(data) - 1 if has_total_row else None
 
-    table = build_table(data, df, amount_pkr_col_idx, total_row_idx, [0] if total_row_idx else None)
+    table = build_table(data, df, amount_pkr_col_idx, total_row_idx)
 
     tw, th = table.wrap(0, 0)
     side_margin, top_margin, bottom_margin = 20 * mm, 20 * mm, 20 * mm
@@ -276,18 +258,11 @@ def dataframe_to_pdf_buffer(df: pd.DataFrame, header_map: dict = None) -> bytes:
         th = table._height
 
     c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
-    
-    # Wrap the table and get actual dimensions
-    table.wrapOn(c, page_width - side_margin * 2, page_height - top_margin - bottom_margin)
-    
-    # Get actual table dimensions after wrapping
-    table_width = table._width
-    table_height = table._height
-    
-    # Center table both horizontally and vertically
-    x = (page_width - table_width) / 2.0  # center horizontally
-    y = (page_height - table_height) / 2.0  # center vertically on entire page
-    table.drawOn(c, x, y)
+    available_width = page_width - side_margin * 2
+    table.wrapOn(c, available_width, page_height - top_margin - bottom_margin)
+    x = (page_width - table._width) / 2.0
+    y = (page_height - top_margin)
+    table.drawOn(c, x, y - table._height)
     c.showPage()
     c.save()
     buffer.seek(0)
@@ -343,7 +318,7 @@ def main():
         if value:
             groups.setdefault(value, []).append(idx)
 
-    # st.write(df.columns.tolist())
+    st.write(df.columns.tolist())
 
     results = []
     progress = st.progress(0)
@@ -374,9 +349,9 @@ def main():
     
     for serial, row_indices in groups.items():
         group_df = df.loc[row_indices].copy()
-        # Calculate rows needed: header (1) + data rows + total (1) + spacing (4 between groups)
+        # Calculate rows needed: header (1) + data rows + total (1) + spacing (3 between groups)
         group_rows_needed = 1 + len(group_df) + 1  # header + data + total
-        spacing_rows = 4 if current_page else 0  # Add spacing if not first group
+        spacing_rows = 3 if current_page else 0  # Add spacing if not first group
         total_rows_needed = group_rows_needed + spacing_rows
         
         # Check if this group fits in current page
@@ -446,29 +421,10 @@ def main():
         progress.progress(int(done / max(total_pages, 1) * 100))
 
     st.success("Processing complete!")
-    # res_df = pd.DataFrame([{k: r.get(k) for k in ["page", "serials", "total_rows", "pdf_url"]} for r in results])
-    # st.dataframe(res_df, use_container_width=True)
+    res_df = pd.DataFrame([{k: r.get(k) for k in ["page", "serials", "total_rows", "pdf_url"]} for r in results])
+    st.dataframe(res_df, use_container_width=True)
 
     st.subheader("Download PDFs")
-    
-    # Download all PDFs as ZIP - moved to top
-    if results:
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for r in results:
-                filename = f"Page_{r['page']}_Serials_{'-'.join(r['serials'])}.pdf"
-                zf.writestr(filename, r["pdf_bytes"])
-        zip_buffer.seek(0)
-        st.download_button(
-            label="📦 Download all PDFs as ZIP",
-            data=zip_buffer,
-            file_name=f"combined_pdfs_{timestamp}.zip",
-            mime="application/zip",
-            key="dl_all_zip"
-        )
-        st.write("---")  # Add separator line
-    
-    # Individual PDF downloads
     for r in results:
         serials_str = ", ".join(r['serials'])
         st.download_button(
@@ -477,6 +433,21 @@ def main():
             file_name=f"Page_{r['page']}_Serials_{'-'.join(r['serials'])}.pdf",
             mime="application/pdf",
             key=f"dl_page_{r['page']}"
+        )
+
+    if results:
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for r in results:
+                filename = f"Page_{r['page']}_Serials_{'-'.join(r['serials'])}.pdf"
+                zf.writestr(filename, r["pdf_bytes"])
+        zip_buffer.seek(0)
+        st.download_button(
+            label="Download all PDFs as ZIP",
+            data=zip_buffer,
+            file_name=f"combined_pdfs_{timestamp}.zip",
+            mime="application/zip",
+            key="dl_all_zip"
         )
 
 if __name__ == "__main__":

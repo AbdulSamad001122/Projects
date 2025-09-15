@@ -34,7 +34,7 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-         [colors.white, colors.white])
+         [colors.white, colors.Color(0.98, 0.98, 0.98)])
     ]
 
     # Handle total_row_indices as either single index or list of indices
@@ -61,7 +61,7 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     
     # Apply header row styling to all header rows
     for header_row_idx in header_row_indices:
-        style.append(("BACKGROUND", (0, header_row_idx), (-1, header_row_idx), colors.white ))
+        style.append(("BACKGROUND", (0, header_row_idx), (-1, header_row_idx), colors.lightgrey))
         style.append(("TEXTCOLOR", (0, header_row_idx), (-1, header_row_idx), colors.black))
         style.append(("FONTNAME", (0, header_row_idx), (-1, header_row_idx), "Helvetica-Bold"))
         style.append(("FONTSIZE", (0, header_row_idx), (-1, header_row_idx), 9))
@@ -185,25 +185,30 @@ def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
     table = build_table(combined_data, first_group_df, amount_pkr_col_idx, total_row_indices, header_row_indices, table_end_indices)
     
     # Page setup
+    tw, th = table.wrap(0, 0)
     side_margin, top_margin, bottom_margin = 20 * mm, 20 * mm, 20 * mm
     page_height, page_width = A4  # A4 portrait (swap if you want landscape)
     
+    if tw > page_width - side_margin * 2:
+        scale_factor = (page_width - side_margin * 2) / tw
+        table._width = tw * scale_factor
+        table._height = th * scale_factor
+        tw = table._width
+        th = table._height
+    
     c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
     
-    # Wrap the table and get actual dimensions - following project specification for proper centering
-    available_width = page_width - side_margin * 2
-    available_height = page_height - top_margin - bottom_margin
-    table.wrapOn(c, available_width, available_height)
+    # Wrap the table and get actual dimensions
+    table.wrapOn(c, page_width - side_margin * 2, page_height - top_margin - bottom_margin)
     
     # Get actual table dimensions after wrapping
     table_width = table._width
     table_height = table._height
-
-    # Perfect horizontal and vertical centering as per project specifications
+    
+    # Center table both horizontally and vertically
     x = (page_width - table_width) / 2.0  # center horizontally
-    y = (page_height - table_height) / 2.0  # center vertically
+    y = (page_height - table_height) / 2.0  # center vertically on entire page
     table.drawOn(c, x, y)
-
     c.showPage()
     c.save()
     buffer.seek(0)
@@ -343,7 +348,7 @@ def main():
         if value:
             groups.setdefault(value, []).append(idx)
 
-    # st.write(df.columns.tolist())
+    st.write(df.columns.tolist())
 
     results = []
     progress = st.progress(0)
@@ -446,29 +451,10 @@ def main():
         progress.progress(int(done / max(total_pages, 1) * 100))
 
     st.success("Processing complete!")
-    # res_df = pd.DataFrame([{k: r.get(k) for k in ["page", "serials", "total_rows", "pdf_url"]} for r in results])
-    # st.dataframe(res_df, use_container_width=True)
+    res_df = pd.DataFrame([{k: r.get(k) for k in ["page", "serials", "total_rows", "pdf_url"]} for r in results])
+    st.dataframe(res_df, use_container_width=True)
 
     st.subheader("Download PDFs")
-    
-    # Download all PDFs as ZIP - moved to top
-    if results:
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for r in results:
-                filename = f"Page_{r['page']}_Serials_{'-'.join(r['serials'])}.pdf"
-                zf.writestr(filename, r["pdf_bytes"])
-        zip_buffer.seek(0)
-        st.download_button(
-            label="📦 Download all PDFs as ZIP",
-            data=zip_buffer,
-            file_name=f"combined_pdfs_{timestamp}.zip",
-            mime="application/zip",
-            key="dl_all_zip"
-        )
-        st.write("---")  # Add separator line
-    
-    # Individual PDF downloads
     for r in results:
         serials_str = ", ".join(r['serials'])
         st.download_button(
@@ -477,6 +463,21 @@ def main():
             file_name=f"Page_{r['page']}_Serials_{'-'.join(r['serials'])}.pdf",
             mime="application/pdf",
             key=f"dl_page_{r['page']}"
+        )
+
+    if results:
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for r in results:
+                filename = f"Page_{r['page']}_Serials_{'-'.join(r['serials'])}.pdf"
+                zf.writestr(filename, r["pdf_bytes"])
+        zip_buffer.seek(0)
+        st.download_button(
+            label="Download all PDFs as ZIP",
+            data=zip_buffer,
+            file_name=f"combined_pdfs_{timestamp}.zip",
+            mime="application/zip",
+            key="dl_all_zip"
         )
 
 if __name__ == "__main__":
