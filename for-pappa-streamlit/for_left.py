@@ -29,6 +29,14 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     t = Table(data, repeatRows=1)
     rows, cols = len(data), len(data[0])
 
+    # Find Rate PKR column index
+    rate_pkr_col_idx = None
+    for i, col in enumerate(df.columns):
+        if "rate" in str(col).lower() and "pkr" in str(col).lower():
+            rate_pkr_col_idx = i
+            break
+
+
     style = [
         ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
@@ -49,13 +57,49 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     elif isinstance(header_row_indices, int):
         header_row_indices = [header_row_indices]
 
+    # Apply right alignment to Rate PKR and Amount PKR columns for data rows only
+    # (excluding header rows and total rows)
+    for r in range(rows):
+        # Skip header rows and total rows
+        if r in header_row_indices or r in total_row_indices:
+            continue
+        # Skip empty spacing rows
+        if all(str(data[r][col]).strip() == "" for col in range(len(data[r]))):
+            continue
+        
+        # Apply right alignment to Rate PKR column for this data row
+        if rate_pkr_col_idx is not None:
+            style.append(("ALIGN", (rate_pkr_col_idx, r), (rate_pkr_col_idx, r), "RIGHT"))
+        
+        # Apply right alignment to Amount PKR column for this data row
+        if amount_pkr_col_idx is not None:
+            style.append(("ALIGN", (amount_pkr_col_idx, r), (amount_pkr_col_idx, r), "RIGHT"))
+        
+        # Apply center alignment to Delivery Challan column for this data row
+        delivery_challan_col_idx = None
+        for i, col in enumerate(df.columns):
+            if "challan" in str(col).lower():
+                delivery_challan_col_idx = i
+                break
+        if delivery_challan_col_idx is not None:
+            style.append(("ALIGN", (delivery_challan_col_idx, r), (delivery_challan_col_idx, r), "CENTER"))
+        
+        # Apply center alignment to Receiving Date column for this data row
+        receiving_date_col_idx = None
+        for i, col in enumerate(df.columns):
+            if "rec" in str(col).lower() and "date" in str(col).lower():
+                receiving_date_col_idx = i
+                break
+        if receiving_date_col_idx is not None:
+            style.append(("ALIGN", (receiving_date_col_idx, r), (receiving_date_col_idx, r), "CENTER"))
+
     for r in range(rows):
         for c in range(cols):
             # Skip empty spacing rows (no borders)
             if all(str(data[r][col]).strip() == "" for col in range(len(data[r]))):
                 continue
             
-            if r in total_row_indices and c in [0, 1, 2, 10, 11 , 5 , 6 , 7]:
+            if r in total_row_indices and c in [0, 1, 2, 10, 11, 5, 6, 7, amount_pkr_col_idx]:
                 continue  # no border for these cells on total row
             style.append(("BOX", (c, r), (c, r), 0.5, colors.black))
     
@@ -97,6 +141,15 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         style.append(("LINEBEFORE", (7, total_row_idx), (7, total_row_idx), 0, colors.transparent))
         style.append(("LINEAFTER", (7, total_row_idx), (7, total_row_idx), 0, colors.transparent))
         style.append(("LINEBEFORE", (8, total_row_idx), (8, total_row_idx), 0, colors.transparent))
+
+        # Remove left border from Amount (PKR) column in total row
+        # if amount_pkr_col_idx is not None:
+        #     style.append(("LINEBEFORE", (amount_pkr_col_idx, total_row_idx), (amount_pkr_col_idx, total_row_idx), 0, colors.transparent))
+
+        # Add bottom and right borders to Amount (PKR) column in total row
+        if amount_pkr_col_idx is not None:
+            style.append(("LINEBELOW", (amount_pkr_col_idx, total_row_idx), (amount_pkr_col_idx, total_row_idx), 0.5, colors.black))
+            style.append(("LINEAFTER", (amount_pkr_col_idx, total_row_idx), (amount_pkr_col_idx, total_row_idx), 0.5, colors.black))
 
         # 🔻 Add bottom borders:
         style.append(("LINEBELOW", (5, total_row_idx), (5, total_row_idx), 0.5, colors.black))
