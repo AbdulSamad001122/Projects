@@ -129,6 +129,9 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         style.append(("ALIGN", (amount_pkr_col_idx, total_row_idx),
                       (amount_pkr_col_idx, total_row_idx), "RIGHT"))
 
+        # Center align the "Total" text in column 4 of total row
+        style.append(("ALIGN", (4, total_row_idx), (4, total_row_idx), "CENTER"))
+
         # 🔻 CUSTOM: remove just certain sides
         # 6th col (index 5) remove right border
         style.append(("LINEAFTER", (5, total_row_idx), (5, total_row_idx), 0, colors.transparent))
