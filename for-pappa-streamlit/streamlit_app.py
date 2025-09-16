@@ -26,8 +26,39 @@ configure_cloudinary()
 
 def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indices=None, table_end_indices=None):
     """Build a ReportLab Table with custom borders for each cell."""
-    t = Table(data, repeatRows=1, rowHeights=[20] * len(data))
-    rows, cols = len(data), len(data[0])
+    
+    # Find Part Name column index for text truncation
+    part_name_col_idx = None
+    for i, col in enumerate(df.columns):
+        if "part" in str(col).lower() and "name" in str(col).lower():
+            part_name_col_idx = i
+            break
+    
+    # Truncate Part Name column text to fit fixed width (limit to 10 characters to ensure it fits)
+    processed_data = []
+    for row in data:
+        processed_row = []
+        for col_idx, cell in enumerate(row):
+            cell_text = str(cell) if cell is not None else ""
+            
+            # Truncate Part Name column text if too long - very strict limit to prevent overflow
+            if col_idx == part_name_col_idx and len(cell_text) > 12:
+                cell_text = cell_text[:8] + ".."
+            elif col_idx == part_name_col_idx and len(cell_text) > 14:
+                cell_text = cell_text[:10]
+            
+            processed_row.append(cell_text)
+        processed_data.append(processed_row)
+    
+    # Define column widths - only specify Part Name width, others auto-size
+    col_widths = None
+    if part_name_col_idx is not None:
+        num_cols = len(data[0]) if data else 12
+        col_widths = [None] * num_cols  # None means auto-width
+        col_widths[part_name_col_idx] = 80  # Even smaller width to ensure text fits completely
+    
+    t = Table(processed_data, repeatRows=1, rowHeights=[20] * len(processed_data), colWidths=col_widths)
+    rows, cols = len(processed_data), len(processed_data[0])
 
     # Find Rate PKR column index
     rate_pkr_col_idx = None
@@ -39,14 +70,14 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
 
     style = [
         ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1),
          [colors.white, colors.white]),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
-        ("TOPPADDING", (0, 0), (-1, -1), 9)
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 9.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 9.5)
     ]
 
     # Handle total_row_indices as either single index or list of indices
@@ -68,7 +99,7 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         if r in header_row_indices or r in total_row_indices:
             continue
         # Skip empty spacing rows
-        if all(str(data[r][col]).strip() == "" for col in range(len(data[r]))):
+        if all(str(processed_data[r][col]).strip() == "" for col in range(len(processed_data[r]))):
             continue
         
         # Apply right alignment to Rate PKR column for this data row
@@ -96,11 +127,20 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
                 break
         if receiving_date_col_idx is not None:
             style.append(("ALIGN", (receiving_date_col_idx, r), (receiving_date_col_idx, r), "CENTER"))
+        
+        # Apply center alignment to Quantity column for this data row
+        quantity_col_idx = None
+        for i, col in enumerate(df.columns):
+            if "quantity" in str(col).lower() or "qty" in str(col).lower():
+                quantity_col_idx = i
+                break
+        if quantity_col_idx is not None:
+            style.append(("ALIGN", (quantity_col_idx, r), (quantity_col_idx, r), "CENTER"))
 
     for r in range(rows):
         for c in range(cols):
             # Skip empty spacing rows (no borders)
-            if all(str(data[r][col]).strip() == "" for col in range(len(data[r]))):
+            if all(str(processed_data[r][col]).strip() == "" for col in range(len(processed_data[r]))):
                 continue
             
             if r in total_row_indices and c in [0, 1, 2, 10, 11, 5, 6, 7, amount_pkr_col_idx]:
@@ -129,7 +169,7 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     for total_row_idx in total_row_indices:
         style.append(("BACKGROUND", (0, total_row_idx), (-1, total_row_idx), colors.white))
         style.append(("FONTNAME", (0, total_row_idx), (-1, total_row_idx), "Helvetica-Bold"))
-        style.append(("FONTSIZE", (0, total_row_idx), (-1, total_row_idx), 9))
+        style.append(("FONTSIZE", (0, total_row_idx), (-1, total_row_idx), 10))
         style.append(("ALIGN", (amount_pkr_col_idx, total_row_idx),
                       (amount_pkr_col_idx, total_row_idx), "RIGHT"))
 
