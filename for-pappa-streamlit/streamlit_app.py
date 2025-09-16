@@ -26,7 +26,7 @@ configure_cloudinary()
 
 def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indices=None, table_end_indices=None):
     """Build a ReportLab Table with custom borders for each cell."""
-    t = Table(data, repeatRows=1)
+    t = Table(data, repeatRows=1, rowHeights=[20] * len(data))
     rows, cols = len(data), len(data[0])
 
     # Find Rate PKR column index
@@ -39,10 +39,14 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
 
     style = [
         ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-         [colors.white, colors.white])
+         [colors.white, colors.white]),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 9)
     ]
 
     # Handle total_row_indices as either single index or list of indices
@@ -163,9 +167,9 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     t.setStyle(TableStyle(style))
     return t
 
-def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
+def build_single_page_pdf(serial_groups, header_map: dict = None) -> bytes:
     """
-    Build a combined PDF with multiple serial number groups.
+    Build a single page PDF with multiple serial number groups.
     Each group includes header + data rows + total row.
     Maximum 22 rows per page including headers and totals.
     Adds spacing (blank rows) between serial number groups.
@@ -261,6 +265,123 @@ def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
     table.drawOn(c, x, y)
 
     c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer.getvalue()
+
+def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
+    """
+    Build a combined PDF with multiple serial number groups.
+    Each group includes header + data rows + total row.
+    Maximum 22 rows per page including headers and totals.
+    Adds spacing (blank rows) between serial number groups.
+    """
+    # Use the single page function for backward compatibility
+    return build_single_page_pdf(serial_groups, header_map)
+
+def build_multi_page_pdf(page_groups, header_map: dict = None) -> bytes:
+    """
+    Build a multi-page PDF document where each page contains one or more serial groups.
+    Each page is treated as a slide in the final document.
+    """
+    buffer = io.BytesIO()
+    
+    # Page setup
+    side_margin, top_margin, bottom_margin = 20 * mm, 20 * mm, 20 * mm
+    page_height, page_width = A4  # A4 portrait
+    
+    c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
+    
+    for page_idx, page_serials in enumerate(page_groups):
+        # Generate PDF content for this page using the single page function
+        page_pdf_bytes = build_single_page_pdf(page_serials, header_map)
+        
+        # Create a new page in the main document
+        if page_idx > 0:
+            c.showPage()
+        
+        # Get the table for this page
+        first_group_df = page_serials[0]['df']
+        headers = list(first_group_df.columns)
+        if header_map:
+            headers = [header_map.get(h, h) for h in headers]
+        
+        # Find amount column index
+        amount_pkr_col_idx = None
+        for i, col in enumerate(first_group_df.columns):
+            if "amount" in str(col).lower() and "pkr" in str(col).lower():
+                amount_pkr_col_idx = i
+                break
+        
+        combined_data = []
+        total_row_indices = []
+        header_row_indices = []
+        table_end_indices = []
+        current_row_index = 0
+        
+        for group_idx, group in enumerate(page_serials):
+            df = group['df']
+            
+            # Add spacing rows before each group (except the first one)
+            if group_idx > 0:
+                for _ in range(4):
+                    combined_data.append([""] * len(headers))
+                    current_row_index += 1
+            
+            # Add header row for each serial group
+            combined_data.append(headers)
+            header_row_indices.append(current_row_index)
+            current_row_index += 1
+            
+            # Add data rows
+            for _, row in df.iterrows():
+                row_data = [str(row[col]) if pd.notna(row[col]) else "" for col in df.columns]
+                combined_data.append(row_data)
+                current_row_index += 1
+            
+            # Add total row
+            if amount_pkr_col_idx is not None:
+                total_amount = pd.to_numeric(df.iloc[:, amount_pkr_col_idx], errors="coerce").sum()
+                total_row = [""] * len(df.columns)
+                if "In-Bound #" in df.columns:
+                    inbound_idx = df.columns.get_loc("In-Bound #")
+                    inbound_number = df["In-Bound #"].iloc[-1] if not df.empty else ""
+                    total_row[inbound_idx] = str(inbound_number)
+                if len(df.columns) >= 5:
+                    total_row[4] = "Total"
+                total_row[amount_pkr_col_idx] = f"{total_amount:,.2f}"
+                blank_col_names = ["Delivery Challan", "P.O #", "PO Line", "Plant", "Receiving Date"]
+                for name in blank_col_names:
+                    if name in df.columns:
+                        total_row[df.columns.get_loc(name)] = ""
+                combined_data.append(total_row)
+                total_row_indices.append(current_row_index)
+                table_end_indices.append(current_row_index)
+                current_row_index += 1
+        
+        # Truncate long cell values
+        max_cell_len = 80
+        for r in range(len(combined_data)):
+            for cidx in range(len(combined_data[r])):
+                val = str(combined_data[r][cidx]) if combined_data[r][cidx] is not None else ""
+                combined_data[r][cidx] = (val[: max_cell_len - 1] + "…") if len(val) > max_cell_len else val
+        
+        table = build_table(combined_data, first_group_df, amount_pkr_col_idx, total_row_indices, header_row_indices, table_end_indices)
+        
+        # Wrap the table and get actual dimensions
+        available_width = page_width - side_margin * 2
+        available_height = page_height - top_margin - bottom_margin
+        table.wrapOn(c, available_width, available_height)
+        
+        # Get actual table dimensions after wrapping
+        table_width = table._width
+        table_height = table._height
+
+        # Perfect horizontal and vertical centering
+        x = (page_width - table_width) / 2.0
+        y = (page_height - table_height) / 2.0
+        table.drawOn(c, x, y)
+    
     c.save()
     buffer.seek(0)
     return buffer.getvalue()
@@ -426,7 +547,7 @@ def main():
     page_groups = []
     current_page = []
     current_page_rows = 0
-    max_rows_per_page = 22
+    max_rows_per_page = 25
     
     for serial, row_indices in groups.items():
         group_df = df.loc[row_indices].copy()
@@ -462,7 +583,7 @@ def main():
     
     for page_idx, page_serials in enumerate(page_groups):
         # Generate PDF for this page
-        pdf_bytes = build_combined_pdf(page_serials, header_map=header_map)
+        pdf_bytes = build_single_page_pdf(page_serials, header_map=header_map)
         
         # Create page identifier
         page_serials_list = [group['serial'] for group in page_serials]
@@ -506,6 +627,18 @@ def main():
     # st.dataframe(res_df, use_container_width=True)
 
     st.subheader("Download PDFs")
+    
+    # Generate single multi-page PDF document with all pages as slides
+    if results and page_groups:
+        multi_page_pdf_bytes = build_multi_page_pdf(page_groups, header_map=header_map)
+        st.download_button(
+            label="📄 Download Single PDF Document (All Pages as Slides)",
+            data=multi_page_pdf_bytes,
+            file_name=f"all_pages_combined_{timestamp}.pdf",
+            mime="application/pdf",
+            key="dl_single_document"
+        )
+        st.write("---")  # Add separator line
     
     # Download all PDFs as ZIP - moved to top
     if results:
