@@ -30,7 +30,8 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     # Find Part Name column index for text truncation
     part_name_col_idx = None
     for i, col in enumerate(df.columns):
-        if "part" in str(col).lower() and "name" in str(col).lower():
+        col_clean = str(col).lower().strip()
+        if "part" in col_clean and "name" in col_clean:
             part_name_col_idx = i
             break
     
@@ -63,7 +64,8 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     # Find Rate PKR column index
     rate_pkr_col_idx = None
     for i, col in enumerate(df.columns):
-        if "rate" in str(col).lower() and "pkr" in str(col).lower():
+        col_clean = str(col).lower().strip()
+        if "rate" in col_clean and "pkr" in col_clean:
             rate_pkr_col_idx = i
             break
 
@@ -113,7 +115,8 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         # Apply center alignment to Delivery Challan column for this data row
         delivery_challan_col_idx = None
         for i, col in enumerate(df.columns):
-            if "challan" in str(col).lower():
+            col_clean = str(col).lower().strip()
+            if "challan" in col_clean:
                 delivery_challan_col_idx = i
                 break
         if delivery_challan_col_idx is not None:
@@ -122,7 +125,8 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         # Apply center alignment to Receiving Date column for this data row
         receiving_date_col_idx = None
         for i, col in enumerate(df.columns):
-            if "rec" in str(col).lower() and "date" in str(col).lower():
+            col_clean = str(col).lower().strip()
+            if "rec" in col_clean and "date" in col_clean:
                 receiving_date_col_idx = i
                 break
         if receiving_date_col_idx is not None:
@@ -131,7 +135,8 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
         # Apply center alignment to Quantity column for this data row
         quantity_col_idx = None
         for i, col in enumerate(df.columns):
-            if "quantity" in str(col).lower() or "qty" in str(col).lower():
+            col_clean = str(col).lower().strip()
+            if "quantity" in col_clean or "qty" in col_clean:
                 quantity_col_idx = i
                 break
         if quantity_col_idx is not None:
@@ -207,6 +212,49 @@ def build_table(data, df, amount_pkr_col_idx, total_row_indices, header_row_indi
     t.setStyle(TableStyle(style))
     return t
 
+def get_robust_header_map(df_columns):
+    """Create a robust header map that handles trailing spaces in column names."""
+    base_header_map = {
+        "Del.Challan": "Delivery Challan",
+        "P.O #": "P.O #",
+        "PO Line": "PO Line",
+        "In-Bound #": "In-Bound #",
+        "GR No.": "GR No.",
+        "Part No.": "Part no.",
+        "Part Name": "Part Name",
+        "Quantity": "Qty",
+        "Rate (PKR)": "Rate (PKR)",
+        "Amount (PKR)": "Amount (PKR)",
+        "Plant": "Plant",
+        "Rec. Date": "Receiving Date"
+    }
+    
+    # Create mapping for actual column names (including those with trailing spaces)
+    robust_map = {}
+    for actual_col in df_columns:
+        # Strip and check if it matches any base key
+        stripped_col = actual_col.strip()
+        if stripped_col in base_header_map:
+            robust_map[actual_col] = base_header_map[stripped_col]
+        else:
+            # If no match, keep original
+            robust_map[actual_col] = actual_col
+    
+    return robust_map
+
+def format_cell_value(value, column_name):
+    """Format cell values, especially dates to remove timestamps."""
+    if pd.isna(value):
+        return ""
+    
+    # Check if this is a date column and the value is a datetime
+    col_clean = str(column_name).lower().strip()
+    if ("date" in col_clean or "rec" in col_clean) and hasattr(value, 'strftime'):
+        # Format date without time
+        return value.strftime('%Y-%m-%d')
+    
+    return str(value)
+
 def build_single_page_pdf(serial_groups, header_map: dict = None) -> bytes:
     """
     Build a single page PDF with multiple serial number groups.
@@ -225,7 +273,8 @@ def build_single_page_pdf(serial_groups, header_map: dict = None) -> bytes:
     # Find amount column index
     amount_pkr_col_idx = None
     for i, col in enumerate(first_group_df.columns):
-        if "amount" in str(col).lower() and "pkr" in str(col).lower():
+        col_clean = str(col).lower().strip()
+        if "amount" in col_clean and "pkr" in col_clean:
             amount_pkr_col_idx = i
             break
     
@@ -251,7 +300,7 @@ def build_single_page_pdf(serial_groups, header_map: dict = None) -> bytes:
         
         # 🔹 add data rows
         for _, row in df.iterrows():
-            row_data = [str(row[col]) if pd.notna(row[col]) else "" for col in df.columns]
+            row_data = [format_cell_value(row[col], col) for col in df.columns]
             combined_data.append(row_data)
             current_row_index += 1
         
@@ -349,7 +398,8 @@ def build_multi_page_pdf(page_groups, header_map: dict = None) -> bytes:
         # Find amount column index
         amount_pkr_col_idx = None
         for i, col in enumerate(first_group_df.columns):
-            if "amount" in str(col).lower() and "pkr" in str(col).lower():
+            col_clean = str(col).lower().strip()
+            if "amount" in col_clean and "pkr" in col_clean:
                 amount_pkr_col_idx = i
                 break
         
@@ -375,7 +425,7 @@ def build_multi_page_pdf(page_groups, header_map: dict = None) -> bytes:
             
             # Add data rows
             for _, row in df.iterrows():
-                row_data = [str(row[col]) if pd.notna(row[col]) else "" for col in df.columns]
+                row_data = [format_cell_value(row[col], col) for col in df.columns]
                 combined_data.append(row_data)
                 current_row_index += 1
             
@@ -438,11 +488,18 @@ def dataframe_to_pdf_buffer(df: pd.DataFrame, header_map: dict = None) -> bytes:
     if header_map:
         headers = [header_map.get(h, h) for h in headers]
 
-    data = [headers] + df.astype(str).values.tolist()
+    # Format data with proper date handling
+    data_rows = []
+    for _, row in df.iterrows():
+        formatted_row = [format_cell_value(row[col], col) for col in df.columns]
+        data_rows.append(formatted_row)
+    
+    data = [headers] + data_rows
 
     amount_pkr_col_idx = None
     for i, col in enumerate(df.columns):
-        if "amount" in str(col).lower() and "pkr" in str(col).lower():
+        col_clean = str(col).lower().strip()
+        if "amount" in col_clean and "pkr" in col_clean:
             amount_pkr_col_idx = i
             break
 
@@ -544,17 +601,50 @@ def main():
         return
 
     df = pd.read_excel(uploaded)
-
-    if serial_column not in df.columns:
-        st.error(f"Column '{serial_column}' not found. Available: {', '.join(df.columns.astype(str))}")
+    
+    # Clean column names by stripping whitespace
+    df.columns = df.columns.str.strip()
+    
+    # Create a mapping of cleaned column names to original for better matching
+    cleaned_to_original = {col.strip(): col for col in df.columns}
+    
+    # Check if serial_column exists (with case-insensitive and stripped matching)
+    column_found = False
+    actual_serial_column = None
+    
+    # First try exact match
+    if serial_column in df.columns:
+        actual_serial_column = serial_column
+        column_found = True
+    else:
+        # Try case-insensitive and stripped matching
+        serial_column_lower = serial_column.lower().strip()
+        for col in df.columns:
+            if col.lower().strip() == serial_column_lower:
+                actual_serial_column = col
+                column_found = True
+                break
+    
+    if not column_found:
+        st.error(f"Column '{serial_column}' not found. Available columns: {', '.join(df.columns.astype(str))}")
+        st.info("💡 Tip: Column names are automatically trimmed for whitespace. Try checking the exact column name from the list above.")
+        
+        # Show columns with their lengths for debugging
+        with st.expander("🔍 Debug: Column names with lengths"):
+            for col in df.columns:
+                st.write(f"'{col}' (length: {len(col)})")
         return
+    else:
+        # Show successful column detection
+        if actual_serial_column != serial_column:
+            st.info(f"✅ Column found: Using '{actual_serial_column}' (matched from input '{serial_column}')")
 
     ok_cloud = configure_cloudinary() if ensure_cloud else True
 
     user_id = os.getenv("USER") or os.getenv("USERNAME") or "user"
     timestamp = int(time.time() * 1000)
 
-    serial_values = df[serial_column].astype(str).fillna("").str.strip()
+    serial_values = df[actual_serial_column].astype(str).fillna("").str.strip()
     groups = {}
     for idx, value in serial_values.items():
         if value:
@@ -566,21 +656,8 @@ def main():
     progress = st.progress(0)
     done = 0
 
-    # 📝 define all your visible header names here
-    header_map = {
-        "Del.Challan": "Delivery Challan",
-        "P.O #": "P.O #",
-        "PO Line": "PO Line",
-        "In-Bound #": "In-Bound #",
-        "GR No.": "GR No.",
-        "Part No.": "Part no.",          # fixed key
-        "Part Name": "Part Name",
-        "Quantity": "Qty",               # fixed key
-        "Rate (PKR)": "Rate (PKR)",
-        "Amount (PKR)": "Amount (PKR)",
-        "Plant": "Plant",
-        "Rec. Date": "Receiving Date"    # fixed key
-    }
+    # Create robust header mapping that handles trailing spaces
+    header_map = get_robust_header_map(df.columns)
 
 
     # Group serials into pages (max 22 rows per page)
