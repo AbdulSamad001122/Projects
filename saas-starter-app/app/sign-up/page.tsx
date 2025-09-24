@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 
 import { useSignUp } from "@clerk/nextjs";
@@ -48,9 +49,7 @@ const Signup = () => {
         password,
       });
 
-      await signUp.attemptEmailAddressVerification({
-        strategy: "email_code",
-      });
+      await signUp.attemptEmailAddressVerification({ code: "" });
       setPendingVerification(true);
     } catch (error: any) {
       console.log(JSON.stringify(error, null, 2));
@@ -62,6 +61,11 @@ const Signup = () => {
     e.preventDefault();
 
     if (!isLoaded) {
+      return;
+    }
+
+    if (!code.trim()) {
+      setError("Please enter the verification code.");
       return;
     }
 
@@ -133,8 +137,9 @@ const Signup = () => {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+              <div id="clerk-captcha" />
               <Button type="submit" className="w-full">
-                Sign Up
+                Create Account
               </Button>
             </form>
           ) : (

@@ -122,17 +122,26 @@ export async function GET(request) {
     if (searchDate) {
       const dateValidation = validateDate(searchDate);
       if (dateValidation.isValid) {
+        // Convert to proper date format for JSON search
+        const formattedDate = dateValidation.value; // YYYY-MM-DD format
+        
         const dateConditions = [
           {
             data: {
               path: ["invoiceDate"],
-              string_contains: dateValidation.value
+              equals: formattedDate
             }
           },
           {
             data: {
               path: ["issueDate"],
-              string_contains: dateValidation.value
+              equals: formattedDate
+            }
+          },
+          {
+            data: {
+              path: ["dueDate"],
+              equals: formattedDate
             }
           }
         ];

@@ -7,7 +7,8 @@ const nextConfig: NextConfig = {
     '192.168.100.38',
     'localhost',
     '*.loca.lt',
-    '*.ngrok.io'
+    '*.ngrok.io',
+    '*.ngrok-free.app'
   ],
 };
 
