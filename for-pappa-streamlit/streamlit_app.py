@@ -6,6 +6,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
+from datetime import datetime
 import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
@@ -368,6 +369,400 @@ def build_combined_pdf(serial_groups, header_map: dict = None) -> bytes:
     # Use the single page function for backward compatibility
     return build_single_page_pdf(serial_groups, header_map)
 
+def build_annexure_table(data, amount_pkr_col_idx, total_row_indices, header_row_indices=None, title_row_index=None):
+    """Build a ReportLab Table specifically for Annexure format with compact borders."""
+    
+    t = Table(data, repeatRows=1, rowHeights=[20] * len(data))
+    rows, cols = len(data), len(data[0])
+
+    # Handle total_row_indices as either single index or list of indices
+    if total_row_indices is None:
+        total_row_indices = []
+    elif isinstance(total_row_indices, int):
+        total_row_indices = [total_row_indices]
+    
+    # Handle header_row_indices as either single index or list of indices
+    if header_row_indices is None:
+        header_row_indices = []
+    elif isinstance(header_row_indices, int):
+        header_row_indices = [header_row_indices]
+
+    style = [
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),  # Compact padding
+        ("TOPPADDING", (0, 0), (-1, -1), 3),     # Compact padding
+    ]
+    
+    # Handle title row styling if present
+    if title_row_index is not None:
+        # Title row spans across columns, bold text
+        style.append(("FONTNAME", (0, title_row_index), (-1, title_row_index), "Helvetica-Bold"))
+        style.append(("FONTSIZE", (0, title_row_index), (-1, title_row_index), 12))
+        style.append(("ALIGN", (0, title_row_index), (0, title_row_index), "LEFT"))  # Title left aligned
+        style.append(("ALIGN", (-1, title_row_index), (-1, title_row_index), "RIGHT"))  # Date right aligned
+        # Add horizontal lines above and below title
+        style.append(("LINEABOVE", (0, title_row_index), (-1, title_row_index), 0.5, colors.black))
+        style.append(("LINEBELOW", (0, title_row_index), (-1, title_row_index), 0.5, colors.black))
+        # Remove borders for other cells in title row
+        for c in range(1, cols-1):
+            style.append(("LINEBEFORE", (c, title_row_index), (c, title_row_index), 0, colors.transparent))
+            style.append(("LINEAFTER", (c, title_row_index), (c, title_row_index), 0, colors.transparent))
+
+    # Apply right alignment to amount columns (7, 8, 9) for data rows
+    for r in range(rows):
+        # Skip header rows, total rows, and title row
+        if r in header_row_indices or r in total_row_indices or r == title_row_index:
+            continue
+        # Apply right alignment to amount columns
+        style.append(("ALIGN", (7, r), (9, r), "RIGHT"))
+        # Apply center alignment to Del.Challan column
+        style.append(("ALIGN", (1, r), (1, r), "CENTER"))
+        # Apply center alignment to Date column
+        style.append(("ALIGN", (6, r), (6, r), "CENTER"))
+    
+    # Add borders to all cells except title row special handling
+    for r in range(rows):
+        for c in range(cols):
+            if r == title_row_index:
+                # Special handling for title row - only top and bottom borders
+                if c == 0 or c == cols-1:  # First and last column get side borders
+                    style.append(("BOX", (c, r), (c, r), 0.5, colors.black))
+            else:
+                style.append(("BOX", (c, r), (c, r), 0.5, colors.black))
+    
+    # Apply header row styling
+    for header_row_idx in header_row_indices:
+        style.append(("BACKGROUND", (0, header_row_idx), (-1, header_row_idx), colors.white))
+        style.append(("TEXTCOLOR", (0, header_row_idx), (-1, header_row_idx), colors.black))
+        style.append(("FONTNAME", (0, header_row_idx), (-1, header_row_idx), "Helvetica-Bold"))
+        style.append(("FONTSIZE", (0, header_row_idx), (-1, header_row_idx), 9))
+        style.append(("ALIGN", (0, header_row_idx), (-1, header_row_idx), "CENTER"))
+    
+    # Apply total row styling
+    for total_row_idx in total_row_indices:
+        style.append(("BACKGROUND", (0, total_row_idx), (-1, total_row_idx), colors.white))
+        style.append(("FONTNAME", (0, total_row_idx), (-1, total_row_idx), "Helvetica-Bold"))
+        style.append(("FONTSIZE", (0, total_row_idx), (-1, total_row_idx), 10))
+        # Right align amount columns in total row
+        style.append(("ALIGN", (7, total_row_idx), (9, total_row_idx), "RIGHT"))
+        # Center align the "Grand Total" text
+        style.append(("ALIGN", (6, total_row_idx), (6, total_row_idx), "CENTER"))
+
+    t.setStyle(TableStyle(style))
+    return t
+
+
+def build_annexure_pdf(df: pd.DataFrame, header_map: dict = None) -> bytes:
+    """
+    Build Annexure of Periodic Billing PDF that exactly matches the user's attached image.
+    Creates a standalone table with title, proper columns, and automatic tax calculations.
+    """
+    buffer = io.BytesIO()
+    
+    # Page setup
+    side_margin, top_margin, bottom_margin = 20 * mm, 20 * mm, 20 * mm
+    page_height, page_width = A4  # A4 portrait
+    
+    c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
+    
+    # Prepare table data exactly like the image
+    headers = [
+        "S.No.", "Del.Challan", "P.O #", "In-Bound #", "GR No.", "Plant", 
+        "Date", "Amount ( PKR )", "Sales Tax @ 18%", "Amount Incl Sales Tax"
+    ]
+    
+    # Find column mappings in the Excel data
+    col_mapping = {}
+    for col in df.columns:
+        col_clean = str(col).lower().strip()
+        if "challan" in col_clean or "del" in col_clean:
+            col_mapping['challan'] = col
+        elif "p.o" in col_clean or ("po" in col_clean and "#" in str(col)):
+            col_mapping['po'] = col
+        elif "in-bound" in col_clean or "inbound" in col_clean or "in bound" in col_clean:
+            col_mapping['inbound'] = col
+        elif "gr" in col_clean and ("no" in col_clean or "number" in col_clean):
+            col_mapping['gr'] = col
+        elif "plant" in col_clean:
+            col_mapping['plant'] = col
+        elif "date" in col_clean:
+            col_mapping['date'] = col
+        elif "amount" in col_clean and "pkr" in col_clean:
+            col_mapping['amount'] = col
+    
+    # Build table data with calculations - GROUP BY SERIAL ENDING
+    table_data = [headers]
+    
+    
+    # Group data by serial ending (last 2 digits)
+    serial_groups = {}
+    
+    for idx, (_, row) in enumerate(df.iterrows()):
+        # Get serial number (Del.Challan)
+        serial_num = str(row.get(col_mapping.get('challan', ''), '')).strip()
+        
+        # Get last 2 digits for grouping
+        if len(serial_num) >= 2:
+            serial_ending = serial_num[-2:]  # Last 2 digits
+        else:
+            serial_ending = serial_num  # Use full number if less than 2 digits
+        
+        # Get amount from Excel
+        amount_value = row.get(col_mapping.get('amount', ''), 0)
+        
+        # Clean and convert amount to float
+        if pd.isna(amount_value):
+            amount = 0.0
+        else:
+            amount_str = str(amount_value).replace(',', '').replace('PKR', '').strip()
+            try:
+                amount = float(amount_str)
+            except (ValueError, TypeError):
+                amount = 0.0
+        
+        # Initialize group if not exists
+        if serial_ending not in serial_groups:
+            serial_groups[serial_ending] = {
+                'serial_numbers': [],
+                'total_amount': 0.0,
+                'po_numbers': [],
+                'inbound_numbers': [],
+                'gr_numbers': [],
+                'plants': [],
+                'dates': [],
+                'info_combined': []
+            }
+        
+        # Add data to group
+        serial_groups[serial_ending]['serial_numbers'].append(serial_num)
+        serial_groups[serial_ending]['total_amount'] += amount
+        
+        # Collect other info for concatenation
+        po_val = str(row.get(col_mapping.get('po', ''), '')).strip()
+        if po_val and po_val not in serial_groups[serial_ending]['po_numbers']:
+            serial_groups[serial_ending]['po_numbers'].append(po_val)
+            
+        inbound_val = str(row.get(col_mapping.get('inbound', ''), '')).strip()
+        if inbound_val and inbound_val not in serial_groups[serial_ending]['inbound_numbers']:
+            serial_groups[serial_ending]['inbound_numbers'].append(inbound_val)
+            
+        gr_val = str(row.get(col_mapping.get('gr', ''), '')).strip()
+        if gr_val and gr_val not in serial_groups[serial_ending]['gr_numbers']:
+            serial_groups[serial_ending]['gr_numbers'].append(gr_val)
+            
+        plant_val = str(row.get(col_mapping.get('plant', ''), '')).strip()
+        if plant_val and plant_val not in serial_groups[serial_ending]['plants']:
+            serial_groups[serial_ending]['plants'].append(plant_val)
+            
+        # Handle date - improved date handling and mapping
+        date_val = row.get(col_mapping.get('date', ''), '')
+        if pd.notna(date_val) and str(date_val).strip():
+            if hasattr(date_val, 'strftime'):
+                date_str = date_val.strftime('%d/%m/%y')
+            else:
+                date_str = str(date_val).strip()
+                # Handle common date formats
+                if len(date_str) >= 8:  # Basic date string validation
+                    pass  # Keep as is
+                else:
+                    date_str = str(date_val)
+            
+            # Only add if not empty and not already in the list
+            if date_str and date_str not in serial_groups[serial_ending]['dates']:
+                serial_groups[serial_ending]['dates'].append(date_str)
+    
+    # Build table rows from grouped data - SORT BY SMALLEST DEL.CHALLAN NUMBER
+    total_amount = 0.0
+    total_sales_tax = 0.0
+    total_incl_tax = 0.0
+    
+    # Sort groups by the smallest Del.Challan number in each group
+    def get_min_challan(serial_ending):
+        group = serial_groups[serial_ending]
+        challan_numbers = []
+        for challan in group['serial_numbers']:
+            try:
+                # Convert to integer for proper numerical sorting
+                challan_numbers.append(int(challan))
+            except (ValueError, TypeError):
+                # If conversion fails, use string sorting
+                challan_numbers.append(float('inf'))  # Put non-numeric at end
+        return min(challan_numbers) if challan_numbers else float('inf')
+    
+    # Sort serial endings by their smallest challan number
+    sorted_serial_endings = sorted(serial_groups.keys(), key=get_min_challan)
+    
+    row_num = 1
+    for serial_ending in sorted_serial_endings:
+        group = serial_groups[serial_ending]
+        
+        # Calculate taxes for this group
+        amount = group['total_amount']
+        sales_tax = amount * 0.18
+        amount_incl_tax = amount + sales_tax
+        
+        # Update running totals
+        total_amount += amount
+        total_sales_tax += sales_tax
+        total_incl_tax += amount_incl_tax
+        
+        # Build combined info strings - SHOW UNIQUE VALUES ONLY ONCE
+        # Del.Challan: Show unique value only once
+        unique_challans = list(set(group['serial_numbers']))
+        if len(unique_challans) == 1:
+            challan_combined = unique_challans[0]  # Show single value
+        else:
+            challan_combined = ', '.join(unique_challans[:2])  # Show first 2 unique
+            if len(unique_challans) > 2:
+                challan_combined += f" (+{len(unique_challans)-2} more)"
+            
+        # P.O #: Show ONLY the first unique value (no multiple values, no +more)
+        if len(group['po_numbers']) >= 1:
+            po_combined = group['po_numbers'][0]  # Show ONLY first value
+        else:
+            po_combined = ''  # Empty if no P.O # data
+            
+        inbound_combined = ', '.join(group['inbound_numbers'][:2]) if group['inbound_numbers'] else ''
+        if len(group['inbound_numbers']) > 2:
+            inbound_combined += " (+more)"
+            
+        gr_combined = ', '.join(group['gr_numbers'][:2]) if group['gr_numbers'] else ''
+        if len(group['gr_numbers']) > 2:
+            gr_combined += " (+more)"
+            
+        plant_combined = ', '.join(group['plants']) if group['plants'] else ''
+        
+        # Date: Show the first date from the group (instead of combined)
+        if group['dates']:
+            date_combined = group['dates'][0]  # Show only the first date
+        else:
+            # If no dates found, try to get any date from the original data
+            date_combined = "No Date"  # Temporary debug text
+        
+        # Build row data for this serial ending group
+        row_data = [
+            str(row_num),  # S.No.
+            challan_combined,  # Del.Challan (combined)
+            po_combined,  # P.O # (combined)
+            inbound_combined,  # In-Bound # (combined)
+            gr_combined,  # GR No. (combined)
+            plant_combined,  # Plant (combined)
+            date_combined,  # Date (combined)
+            f"{amount:,.2f}",  # Amount (PKR) - SUMMED
+            f"{sales_tax:,.2f}",  # Sales Tax @18%
+            f"{amount_incl_tax:,.2f}"  # Amount Incl Sales Tax
+        ]
+        table_data.append(row_data)
+        row_num += 1
+    
+    # Add Grand Total row exactly like in the image
+    grand_total_row = [
+        "", "", "", "", "", "", "Grand Total",
+        f"{total_amount:,.2f}",
+        f"{total_sales_tax:,.2f}",
+        f"{total_incl_tax:,.2f}"
+    ]
+    table_data.append(grand_total_row)
+    
+    # Create table with proper styling like the image
+    table = Table(table_data, rowHeights=[20] * len(table_data))
+    
+    # Apply styling exactly like in the image
+    style_commands = [
+        # Basic formatting
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        
+        # Header row styling
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        
+        # Apply individual cell borders (like regular mode)
+        # Grid is removed - borders applied individually with skip logic below
+        
+        # Right align amount columns (7, 8, 9) for data rows
+        ('ALIGN', (7, 1), (9, -2), 'RIGHT'),  # Data rows only
+        
+        # Center align Del.Challan and P.O # columns
+        ('ALIGN', (1, 1), (1, -2), 'CENTER'),  # Del.Challan column
+        ('ALIGN', (2, 1), (2, -2), 'CENTER'),  # P.O # column
+        
+        # Grand Total row styling
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 9),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.white),
+        ('ALIGN', (6, -1), (6, -1), 'CENTER'),  # "Grand Total" text
+        ('ALIGN', (7, -1), (9, -1), 'RIGHT'),  # Amount columns in total row
+    ]
+    
+    # Apply individual cell borders with skip logic (same as regular mode)
+    rows, cols = len(table_data), len(table_data[0])
+    for r in range(rows):
+        for col in range(cols):
+            # Skip borders for specific columns in Grand Total row (same logic as regular mode)
+            # For Annexure: skip columns 0,1,2,3,4,5 in total row (only show 6,7,8,9)
+            if r == len(table_data) - 1 and col in [0, 1, 2, 3, 4, 5]:  # Grand Total row
+                continue  # no border for these cells on total row
+            style_commands.append(("BOX", (col, r), (col, r), 0.5, colors.black))
+    
+    table.setStyle(TableStyle(style_commands))
+    
+    # First, wrap table to get its actual dimensions
+    available_width = page_width - 2 * side_margin
+    table.wrapOn(c, available_width, page_height)
+    
+    # Get actual table dimensions after wrapping
+    table_width, table_height = table.wrap(available_width, page_height)
+    
+    # Now draw title section with same width as table
+    title_y = page_height - 60
+    
+    # Calculate table position for title bar alignment
+    table_x = (page_width - table_width) / 2.0
+    
+    # Draw title bar with borders (same width as table)
+    title_bar_height = 25
+    
+    # Draw title bar background and borders
+    c.setLineWidth(0.5)
+    c.rect(table_x, title_y - 5, table_width, title_bar_height, stroke=1, fill=0)
+    
+    # Draw title on left within the bar
+    c.setFont("Helvetica-Bold", 12)
+    title_text = "ANNEXURE OF PERIODIC BILLING"
+    c.drawString(table_x + 5, title_y + 5, title_text)
+    
+    # Draw date on right within the bar
+    date_text = f"Date : {datetime.now().strftime('%d-%m-%y')}"
+    c.setFont("Helvetica", 10)
+    date_width = c.stringWidth(date_text, "Helvetica", 10)
+    c.drawString(table_x + table_width - date_width - 5, title_y + 5, date_text)
+    
+    # Position table on page - below the title bar
+    table_y_position = title_y - 35  # Position below title bar
+    y = table_y_position - table_height
+    
+    table.drawOn(c, table_x, y)
+    
+    # Create table with proper styling like the image
+    table = Table(table_data, rowHeights=[20] * len(table_data))
+    
+
+    
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def build_multi_page_pdf(page_groups, header_map: dict = None) -> bytes:
     """
     Build a multi-page PDF document where each page contains one or more serial groups.
@@ -594,6 +989,10 @@ def main():
         serial_column = st.text_input("Serial Column", value="Del.Challan")
         create_xlsx = st.checkbox("Also create per-group XLSX", value=False)
         ensure_cloud = st.checkbox("Upload to Cloudinary", value=True)
+        
+        # Add toggle for Annexure PDF
+        st.write("---")  # Separator line
+        generate_annexure = st.checkbox("📋 Generate Annexure PDF", value=False, help="Generate 'Annexure of Periodic Billing' PDF with sales tax calculations")
 
     uploaded = st.file_uploader("Upload XLSX", type=["xlsx"])
     if uploaded is None:
@@ -605,8 +1004,11 @@ def main():
     # Clean column names by stripping whitespace
     df.columns = df.columns.str.strip()
     
-    # Create a mapping of cleaned column names to original for better matching
-    cleaned_to_original = {col.strip(): col for col in df.columns}
+    # Display information about the toggle
+    if generate_annexure:
+        st.info("📋 **Annexure Mode**: Will generate a single 'Annexure of Periodic Billing' PDF with sales tax calculations for all data.")
+    else:
+        st.info("📄 **Regular Mode**: Will generate grouped PDFs by delivery challan as usual.")
     
     # Check if serial_column exists (with case-insensitive and stripped matching)
     column_found = False
@@ -698,6 +1100,49 @@ def main():
     done = 0
     total_pages = len(page_groups)
     
+    # Generate Annexure PDF if toggle is enabled
+    if generate_annexure:
+        # For annexure, we use the entire dataframe as one document
+        annexure_pdf_bytes = build_annexure_pdf(df, header_map=header_map)
+        
+        annexure_public_id = f"{user_id}_{timestamp}_Annexure_Billing"
+        annexure_pdf_url = None
+        
+        if ensure_cloud and ok_cloud:
+            try:
+                annexure_res = upload_raw_to_cloudinary(annexure_pdf_bytes, public_id=annexure_public_id)
+                annexure_pdf_url = annexure_res.get("secure_url")
+            except Exception as e:
+                st.warning(f"Failed to upload Annexure PDF: {e}")
+        
+        # Add annexure result
+        results.append({
+            "type": "annexure",
+            "page": "Annexure",
+            "serials": ["All Data"],
+            "total_rows": len(df),
+            "pdf_url": annexure_pdf_url,
+            "xlsx_urls": {},
+            "pdf_bytes": annexure_pdf_bytes,
+        })
+        
+        st.success("Annexure PDF generated successfully!")
+        
+        # Show download option for Annexure PDF
+        st.subheader("Download Annexure PDF")
+        st.download_button(
+            label="📋 Download Annexure of Periodic Billing",
+            data=annexure_pdf_bytes,
+            file_name=f"Annexure_Periodic_Billing_{timestamp}.pdf",
+            mime="application/pdf",
+            key="dl_annexure"
+        )
+        st.write("---")  # Add separator line
+        
+        # Don't process regular grouped PDFs when annexure is enabled
+        return
+    
+    # Regular PDF processing (when annexure toggle is OFF)
     for page_idx, page_serials in enumerate(page_groups):
         # Generate PDF for this page
         pdf_bytes = build_single_page_pdf(page_serials, header_map=header_map)
