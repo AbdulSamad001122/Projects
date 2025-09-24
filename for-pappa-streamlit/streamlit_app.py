@@ -668,21 +668,21 @@ def build_annexure_pdf(df: pd.DataFrame, header_map: dict = None) -> bytes:
     table_data.append(grand_total_row)
     
     # Create table with proper styling like the image
-    table = Table(table_data, rowHeights=[20] * len(table_data))
+    table = Table(table_data, rowHeights=[24] * len(table_data))  # Increased from 20 to 24
     
     # Apply styling exactly like in the image
     style_commands = [
         # Basic formatting
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),  # Changed to Bold
+        ('FONTSIZE', (0, 0), (-1, -1), 11),  # Increased from 9 to 11
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),  # Increased padding for better spacing
+        ('TOPPADDING', (0, 0), (-1, -1), 4),     # Increased padding for better spacing
         
         # Header row styling
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),  # Increased from 9 to 11
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         
         # Apply individual cell borders (like regular mode)
@@ -697,7 +697,7 @@ def build_annexure_pdf(df: pd.DataFrame, header_map: dict = None) -> bytes:
         
         # Grand Total row styling
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, -1), (-1, -1), 9),
+        ('FONTSIZE', (0, -1), (-1, -1), 12),  # Increased from 9 to 12 for total row
         ('BACKGROUND', (0, -1), (-1, -1), colors.white),
         ('ALIGN', (6, -1), (6, -1), 'CENTER'),  # "Grand Total" text
         ('ALIGN', (7, -1), (9, -1), 'RIGHT'),  # Amount columns in total row
@@ -742,12 +742,12 @@ def build_annexure_pdf(df: pd.DataFrame, header_map: dict = None) -> bytes:
     
     # Draw date on right within the bar
     date_text = f"Date : {datetime.now().strftime('%d-%m-%y')}"
-    c.setFont("Helvetica", 10)
-    date_width = c.stringWidth(date_text, "Helvetica", 10)
+    c.setFont("Helvetica-Bold", 10)
+    date_width = c.stringWidth(date_text, "Helvetica-Bold", 10)
     c.drawString(table_x + table_width - date_width - 5, title_y + 5, date_text)
     
     # Position table on page - below the title bar
-    table_y_position = title_y - 35  # Position below title bar
+    table_y_position = title_y - 13  # Position below title bar
     y = table_y_position - table_height
     
     table.drawOn(c, table_x, y)
