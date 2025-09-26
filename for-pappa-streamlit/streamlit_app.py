@@ -988,7 +988,7 @@ def main():
         st.header("Options")
         serial_column = st.text_input("Serial Column", value="Del.Challan")
         create_xlsx = st.checkbox("Also create per-group XLSX", value=False)
-        ensure_cloud = st.checkbox("Upload to Cloudinary", value=True)
+        ensure_cloud = st.checkbox("Upload to Cloudinary", value=False)
         
         # Add toggle for Annexure PDF
         st.write("---")  # Separator line
